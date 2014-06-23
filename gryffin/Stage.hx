@@ -192,6 +192,33 @@ import motion.Actuate;
 		}
 	}
 
+	public function bindEvents( ?events:Array<String> ):Void {
+		var me = this;
+		if (events == null) {
+			events = ['click', 'mouse-move', 'mouse-enter', 'mouse-leave'];
+		}
+		var clickHandler:Dynamic = function(event:flash.events.MouseEvent):Void {
+			var gevent:Dynamic = new gryffin.events.GryffinEvent('click');
+			gevent.data.x = event.stageX;
+			gevent.data.y = event.stageY;
+			var clicked:Null<gryffin.Entity> = null;
+			me.emit('click', gevent);
+			for (child in me.get('!:_cache')) {
+				if (child.contains(gevent.x, gevent.y)) {
+					if (!gevent.isDefaultPrevented) child.emit('click', gevent);
+					clicked = child;
+				}
+			}
+			for (x in me.childNodes) {
+				if (x != clicked && !gevent.isDefaultPrevented) x.emit('stage:click', gevent);
+			}
+		};
+		this.stage.addEventListener(flash.events.MouseEvent.CLICK, clickHandler);
+		#if mobile
+		this.stage.addEventListener(openfl.events.TouchEvent.TOUCH_TAP, clickHandler);
+		#end
+	}
+
 	public function containsEntity( item:Entity ):Bool {
 		var allOfType:Array<Entity> = this.get('.' + Types.basictype(item)).toArray();
 		allOfType = allOfType.filter(function(x:Entity) {
