@@ -4,13 +4,14 @@ typedef Handler = Dynamic -> Dynamic;
 
 class Selection {
 	public var items:Array < Entity >;
+	public var length(get, never):Int;
 	public var selector:String;
 	public var selectorFunction: Entity -> Bool;
 	public var stage:Stage;
 	public function new( sel:String, stage:Stage ) {
 		this.stage = stage;
 		this.selector = sel;
-		this.selectorFunction = Selector.compile(sel);
+		this.selectorFunction = this.getSelectorFunction(sel);
 		this.items = this.getMatches(stage.childNodes);
 		
 	}
@@ -37,6 +38,17 @@ class Selection {
 	@:to public function toArray():Array<Entity> {
 		return [for (x in this) x];
 	}
+	public function each(lambdaFunc:Entity->Int->Void):Void {
+		var i:Int = 0;
+		for (ent in this) {
+			lambdaFunc(ent, i);
+			i++;
+		}
+	}
+	public function is( filter:String ):Bool {
+		var selFunc:Entity->Bool = this.getSelectorFunction(filter);
+		return (this.at(0).is(filter));
+	}
 	public function on( type:String, f:Handler ):Void {
 		for ( item in this.items ) item.on( type, f );
 	}
@@ -59,6 +71,16 @@ class Selection {
 		for ( item in this.items ) {
 			if(item.handlers.exists(type)) {
 				item.handlers.remove(type);
+			}
+		}
+	}
+	public function call(method:String, args:Array<Dynamic>):Void {
+		for ( item in this.items ) {
+			var func:Dynamic = Reflect.getProperty(item, method);
+			try {
+				Reflect.callMethod(item, func, args);
+			} catch ( error:String ) {
+				null;
 			}
 		}
 	}
@@ -94,5 +116,24 @@ class Selection {
 		for ( item in this.items ) {
 			item.show();
 		}
+	}
+	private inline function get_length():Int {
+		return (this.items.length);
+	}
+
+	private function getSelectorFunction(sel:String):Entity->Bool {
+		if (_useCache && _filterCache.exists(sel)) {
+			return _filterCache.get(sel);
+		} else {
+			var selFunc:Entity->Bool = Selector.compile(sel);
+			_filterCache.set(sel, selFunc);
+			return selFunc;
+		}
+	}
+
+	private static var _filterCache:Map<String, Entity->Bool>;
+	private static var _useCache:Bool = false;
+	private static function __init__():Void {
+		_filterCache = new Map();
 	}
 }

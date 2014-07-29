@@ -8,7 +8,7 @@ class Lexer {
 		this.tokens = [];
 	}
 	private function isAlphaNumeric( c:String ) {
-		return ~/[A-Za-z0-9_]/.match(c);
+		return ~/[A-Za-z0-9_\-]/.match(c);
 	}
 	private function advance():String {
 		return this.input.shift();

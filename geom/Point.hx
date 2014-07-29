@@ -5,7 +5,7 @@ class Point {
 	public var y:Float;
 	public var z:Float;
 	
-	public function new ( x:Float, y:Float, z:Float = 0 ) {
+	public function new ( x:Float = 0, y:Float = 0, z:Float = 0 ) {
 		this.x = x;
 		this.y = y;
 		this.z = z;
@@ -15,5 +15,8 @@ class Point {
 	}
 	public function is(x:Int, y:Int, z:Int = 0):Bool {
 		return (this.x == x && this.y == y && this.z == z);
+	}
+	public function clone():Point {
+		return new Point(this.x, this.y, this.z);
 	}
 }

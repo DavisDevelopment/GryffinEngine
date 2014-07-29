@@ -72,37 +72,14 @@ class Colors {
 		}
 	}
 	public static function parseToRGB( col:Dynamic ):Array < Int > {
-		var type:String = Types.typename( col );
-		switch ( type ) {
-			case "String":
-				var colString = cast( col, String );
-				if ( colString.substring(0,1) == "#" ) colString = colString.substring(1);
-				else if ( colString.substring(0, 2) == "0x" ) colString = colString.substring(2);
-				var rgbString:Array < String > = [];
-				var piece:String = "";
-				for ( i in 2...colString.length+1 ) {
-					if ( i % 2 == 0 && i != 0 ) {
-						rgbString.push( piece );
-						piece = "";
-					} else {
-						piece += colString.charAt(i);
-					}
-				}
-				var result = [for (x in rgbString) Std.parseInt("0x"+x)];
-				return result;
-				
-			case "Int":
-				var hex:String = ("#" + StringTools.hex(cast(col, Int), 8));
-				return parseToRGB(hex);
-				
-			case "Array<Int>", "Array<Float>", "Array<Number>":
-				var list = cast( col, Array<Dynamic> );
-				if ( list.length == 4 ) list = list.slice(1);
-				return [for (x in list) Math.floor(x)];
-				
-			default:
-				return parseToRGB(Std.string(col));
-		}
+		var color:Int = parse(col);
+		var red:Int = color >> 16 & 0xFF;
+		var green:Int = color >> 8 & 0xFF;
+		var blue:Int = color & 0xFF;
+		return [red, green, blue];
+	}
+	public static function parseFromRGB(red:Int, green:Int, blue:Int):Int {
+		return (Math.round(red) << 16) | (Math.round(green) << 8) | Math.round(blue);
 	}
 	public static function rgb2hsl( r:Float, g:Float, b:Float ):Array < Float > {
 		r /= 255;
@@ -163,24 +140,15 @@ class Colors {
 	public static function lighten( col:Dynamic, amount:Float ):String {
 		return darken( col, amount*-1 );
 	}
-	public static function mix( col1:Dynamic, col2:Dynamic, weight:Float=50 ):String {
-		var color1 = parseToRGB( col1 );
-		var color2 = parseToRGB( col2 );
-		var p = (weight / 100.0);
-		var w = p * 2 - 1;
-		var a = 0;
-		var w1 = (((w + a) / (1 + w * a)) + 1) / 2.0;
-		var w2 = 1 - w1;
-		var rgb = [
-			(color1[0] * w1) + (color2[0] * w2),
-			(color1[1] * w1) + (color2[1] * w2),
-			(color1[2] * w1) + (color2[2] * w2)
-		];
-		for ( i in 0...rgb.length+1 ) {
-			var channel = rgb[i];
-			if ( channel > 255 ) rgb[i] = 255;
-			if ( channel < 0 ) rgb[i] = 0;
-		}
-		return unparse( rgb );
+	public static function mix( col1:Dynamic, col2:Dynamic, ?ratio:Float = 0.5 ):Int {
+		var color1:Array<Int> = parseToRGB(parse(col1));
+		var color2:Array<Int> = parseToRGB(parse(col2));
+		var color:Array<Int> = [0, 0, 0];
+
+		color[0] = Std.int(color1[0] + ((color2[0] - color1[0]) * ratio));
+		color[1] = Std.int(color1[1] + ((color2[1] - color1[1]) * ratio));
+		color[2] = Std.int(color1[3] + ((color2[3] - color1[3]) * ratio));
+
+		return parseFromRGB(color[0], color[1], color[2]);
 	}
 }

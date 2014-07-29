@@ -5,24 +5,34 @@ import gryffin.Surface;
 
 import flash.display.BitmapData;
 import flash.display.Bitmap;
+import flash.geom.Rectangle;
+import flash.geom.Point;
+import flash.utils.ByteArray;
+import haxe.io.Bytes;
+
 import openfl.Assets;
+import haxe.Json;
 
 class Sprite extends Entity {
 	public var path(default, set):String;
 	public var data(default, set):Null<BitmapData>;
-	public var pixels(get, never):Array<Dynamic>;
+	public var pixels(get, never):Null<ByteArray>;
 
 	public var imageWidth(get, never):Float;
 	public var imageHeight(get, never):Float;
 
-	private var dataCache:Map<Array<Float>, BitmapData>;
+	private var dataCache:Map<String, BitmapData>;
+	private var resizeCache:Map<String, BitmapData>;
+	private var original_data:Null<BitmapData>;
 
 	public function new( id:String ) {
 		super();
 		this.path = id;
 		this.data = Assets.exists(id) ? Assets.getBitmapData(id) : null;
+		this.original_data = (this.data != null) ? this.data : null;
 
 		this.dataCache = new Map();
+		this.resizeCache = new Map();
 	}
 
 	private function get_imageWidth():Float {
@@ -31,11 +41,11 @@ class Sprite extends Entity {
 	private function get_imageHeight():Float {
 		return this.data.height;
 	}
-	private function get_pixels():Array<Dynamic> {
+	private function get_pixels():Null<ByteArray> {
 		if (this.data != null)
 			return this.getFragmentPixels(0, 0, this.imageWidth, this.imageHeight);
 		else
-			return new Array();
+			return null;
 	}
 	private function set_data(d:BitmapData):BitmapData {
 		this.data = d;
@@ -45,42 +55,41 @@ class Sprite extends Entity {
 	private function set_path(npath:String):String {
 		path = npath;
 		this.data = Assets.exists(npath) ? Assets.getBitmapData(npath) : null;
+		this.original_data = this.data != null ? this.data : null;
 		return npath;
 	}
+	public function reload():Void {
+		this.path = this.path;
+	}
+	public function getFragmentPixels(sx:Float, sy:Float, width:Float, height:Float):ByteArray {
+		var sourceRect:Rectangle = new Rectangle(sx, sy, width, height);
+		var pixelArray:ByteArray = this.data.getPixels(sourceRect);
 
-	private function getFragmentPixels(sx:Float, sy:Float, width:Float, height:Float):Array<Dynamic> {
-		var pixels:Array<Dynamic> = [];
-		for (x in (Std.int(sx)...Std.int(width))) {
-			for (y in (Std.int(sy)...Std.int(height))) {
-				var pixel:Dynamic = {
-					'value' : this.data.getPixel32(x, y),
-					'x' : x,
-					'y' : y
-				};
-				pixels.push(pixel);
+		return pixelArray;
+	}
+	public function getFragmentRows(sx:Int, sy:Int, width:Int, height:Int):Array<Array<Int>> {
+		var rows:Array<Array<Int>> = new Array();
+
+		for (y in (sy...height)) {
+			var row:Array<Int> = new Array();
+			for (x in (sx...width)) {
+				row.push(this.data.getPixel32(x, y));
 			}
+			rows.push(row);
 		}
-		return pixels;
+		return rows;
 	}
 	public function getFragment(sx:Float, sy:Float, width:Float, height:Float, ?scaleX:Float, ?scaleY:Float):BitmapData {
-		var i:Float -> Int = Std.int;
-		//- Get Pixel List
-		var isCached:Bool = this.dataCache.exists([sx, sy, width, height]);
-		if (isCached) {
-			return this.dataCache.get([sx, sy, width, height]);
+		var i:Float -> Int = Math.floor.bind(_);
+		var key:String = Json.stringify([sx, sy, width, height]);
+		if (this.dataCache.exists(key)) {
+			return this.dataCache.get(key);
 		} else {
-			var pixels:Array<Dynamic> = this.getFragmentPixels(sx, sy, width, height);
-
-			//- Create Image Fragment
-			var dummy:BitmapData = new BitmapData(i(width), i(height));
-
-			for (pixel in pixels) {
-				dummy.setPixel32(pixel.x, pixel.y, pixel.value);			
-			}
-			//- Cache it
-			this.dataCache.set([sx, sy, width, height], dummy);
-			//- return it
-			return dummy;
+			var dumm:BitmapData = new BitmapData(i(width), i(height), true, 0x000000);
+			var sourc:Rectangle = new Rectangle(sx, sy, width, height);
+			var dest:Point = new Point(0, 0);
+			dumm.copyPixels(this.data, sourc, dest, null, null, true);
+			return dumm;
 		}
 	}
 	public function resizeFragment(frag:BitmapData, width:Float, height:Float):BitmapData {
@@ -92,17 +101,36 @@ class Sprite extends Entity {
 		scaled.draw(frag, matrix, null, null, null, true);
 		return scaled;
 	}
+	public function getScaledBitmap(sx:Float, sy:Float, sw:Float, sh:Float, dx:Float, dy:Float, dw:Float, dh:Float):BitmapData {
+		var numkey:Array<Float> = [this.data.width, this.data.height, sx, sy, sw, sh, dx, dy, dw, dh];
+		var key:String = Json.stringify(numkey);
+		if (this.resizeCache.exists(key)) {
+			return cast(this.resizeCache.get(key), BitmapData);
+		} else {
+			var i:Float -> Int = Std.int;
+			var fragment:BitmapData = this.getFragment(sx, sy, sw, sh);
+			fragment = this.resizeFragment(fragment, dw, dh);
+			var wrapper:Bitmap = new Bitmap(fragment);
+			wrapper.width = dw;
+			wrapper.height = dh;
+
+			var drawer:BitmapData = new BitmapData(i(dw), i(dh));
+			drawer.draw(wrapper);
+			this.resizeCache.set(key, drawer);
+			return drawer;
+		}
+	}
+	public function resize(width:Int, height:Int):Void {
+		var nbm:BitmapData = this.getScaledBitmap(0, 0, this.imageWidth, this.imageHeight, 0, 0, width, height);
+		this.data = nbm;
+	}
 	public function drawFragment(g:Surface, sx:Float, sy:Float, sw:Float, sh:Float, dx:Float, dy:Float, dw:Float, dh:Float):Void {
 		var i:Float -> Int = Std.int;
-		var fragment:BitmapData = this.getFragment(sx, sy, sw, sh);
-		fragment = this.resizeFragment(fragment, dw, dh);
-		var wrapper:Bitmap = new Bitmap(fragment);
-		wrapper.width = dw;
-		wrapper.height = dh;
-
-		var drawer:BitmapData = new BitmapData(i(dw), i(dh));
-		drawer.draw(wrapper);
-
+		var drawer:BitmapData = this.getScaledBitmap(sx, sy, sw, sh, dx, dy, dw, dh);
 		g.drawImage(drawer, i(dx), i(dy), i(dw), i(dh));
+	}
+
+	override public function render(g:Surface, stage:Stage):Void {
+		this.drawFragment(g, 0, 0, this.imageWidth, this.imageHeight, this.x, this.y, this.width, this.height);
 	}
 }

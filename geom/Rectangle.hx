@@ -29,4 +29,14 @@ class Rectangle {
 		var sameZ:Bool = ( this.z == p.z );
 		return ( sameZ && inX && inY );
 	}
+	public function points():Array<Point> {
+		var pointlist:Array<Point> = new Array();
+		for (x in Std.int(this.x)...Std.int(this.x + this.width)) {
+			for (y in Std.int(this.y)...Std.int(this.y + this.height)) {
+				var p:Point = new Point(x, y);
+				pointlist.push(p);
+			}
+		}
+		return pointlist;
+	}
 }

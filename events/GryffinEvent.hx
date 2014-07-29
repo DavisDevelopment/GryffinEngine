@@ -26,4 +26,7 @@ class GryffinEvent implements Dynamic {
 		}
 		return action;
 	}
+	public function toString():String {
+		return haxe.Json.stringify(this.data);
+	}
 }

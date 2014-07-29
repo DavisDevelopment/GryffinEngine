@@ -65,6 +65,22 @@ class Utils {
 			}
 		});
 	}
+	public static function memoize(func:Dynamic, ?owner:Dynamic):Dynamic {
+		haxe.Serializer.USE_CACHE = true;
+		haxe.Serializer.USE_ENUM_INDEX = true;
+
+		var cache:Map<String, Dynamic> = new Map();
+		return Reflect.makeVarArgs(function(args:Array<Dynamic>):Dynamic {
+			var key:String = haxe.Serializer.run(args);
+			if (cache.exists(key)) {
+				return cache.get(key);
+			} else {
+				var retval = Reflect.callMethod(owner, func, args);
+				cache.set(key, retval);
+				return retval;
+			}
+		});
+	}
 	public static function DynamicToMap ( dyn:Dynamic ):Map<String, { v : Dynamic }> {
 		var keys:Array<String> = Reflect.fields(dyn);
 		var result:Map<String, { v : Dynamic }> = new Map();
@@ -99,12 +115,21 @@ class Utils {
 	public static function hasField( o:Dynamic, field:String ):Bool {
 		return (Reflect.getProperty( o, field ) != null);
 	}
+	public static function degrees(rads:Float):Float {
+		return (rads * 180 / Math.PI);
+	}
+	public static function radians(degs:Float):Float {
+		return (degs * Math.PI / 180);
+	}
 	public static function distance( x1:Float, y1:Float, x2:Float, y2:Float ):Int {
 		var dx:Int = Math.round(Math.abs(x2 - x1));
 		var dy:Int = Math.round(Math.abs(y2 - y1));
 		dx = dx*dx;
 		dy = dy*dy;
 		return Math.round(Math.sqrt(dx + dy));
+	}
+	public static function angleBetween(x1:Float, y1:Float, x2:Float, y2:Float):Float {
+		return (Math.atan2(x2 - x1, y2 - y1) * 180 / Math.PI);
 	}
 	public static function isPointInRect( point:{x:Int, y:Int}, rect:{x:Int, y:Int, width:Int, height:Int} ):Bool {
 		var inX:Bool = (point.x > rect.x && point.x < rect.x + rect.width);
@@ -124,5 +149,41 @@ class Utils {
 			if ( smallest == null || smallest > x ) smallest = x;
 		}
 		return smallest;
+	}
+	public static function arraySmallest<T>(set:Array<T>, predicate:T->Float):Null<T> {
+		var smallestItem:Null<T> = null;
+		var smallestRating:Null<Float> = null;
+		for (item in set) {
+			var rating:Float = predicate(item);
+			if (smallestItem == null || smallestRating > rating) {
+				smallestItem = item;
+				smallestRating = rating;
+			}
+		}
+		return smallestItem;
+	}
+	public static function arrayLargest<T>(set:Array<T>, predicate:T->Float):Null<T> {
+		var largestItem:Null<T> = null;
+		var largestRating:Null<Float> = null;
+		for (item in set) {
+			var rating:Float = predicate(item);
+			if (largestItem == null || largestRating < rating) {
+				largestItem = item;
+				largestRating = rating;
+			}
+		}
+		return largestItem;
+	}
+	public static function dashedToCamel(str:String):String {
+		var result:String = str;
+		var bits:Array<String> = str.split('-');
+		if (bits.length == 1) return result;
+		else {
+			result = bits[0];
+			for (piece in bits.slice(1)) {
+				result += (piece.substring(0, 1).toUpperCase() + piece.substring(1));
+			}
+		}
+		return result;
 	}
 }

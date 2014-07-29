@@ -7,8 +7,16 @@ import flash.events.MouseEvent;
 import flash.media.Sound;
 import motion.Actuate;
 
+//- Gryffin imports
+import gryffin.gss.GryffinStyles;
+import gryffin.storage.LocalStorage;
+
 @:expose class Stage extends Sprite {
+	public var fps:Int;
+	private var framesThisSecond:Int;
+	private var _activated:Bool;
 	private var selectors:Map<String, Selection>;
+	private var env_vars:Map<String, Dynamic>;
 	public var textures:NativeMap<String, BitmapData>;
 	public var sounds:NativeMap<String, Sound>;
 	public var shape:Shape;
@@ -23,10 +31,14 @@ import motion.Actuate;
 	public var childNodes:Array<Entity>;
 	public var surface:Surface;
 	public var handlers:Map<String, Array<Dynamic->Dynamic>>;
+	private var stylesheets:Array<Dynamic>;
 	
 	public function new( ?textureList:Map<String, String>, ?soundList:Map<String, String> ) {
 		super();
 		stages.push(this);
+
+		this.fps = 0;
+		this.framesThisSecond = 0;
 		this.handlers = new Map();
 		this.shape = new Shape();
 		this.sprite = new Sprite();
@@ -35,6 +47,8 @@ import motion.Actuate;
 		this.childNodes = [];
 		this.sceneName = "game";
 		this.selectors = new Map();
+		this.stylesheets = new Array();
+		this.env_vars = new Map();
 		this.surface = new Surface( this.shape.graphics, this );
 		if ( textureList != null ) this.textures = Utils.getTextures(textureList);
 		else this.textures = Utils.getTextures(new Map());
@@ -44,8 +58,14 @@ import motion.Actuate;
         addChild(shape);
         addChild(sprite);
 		this.selectors.set("*", new Selection("*", this));
+		this.init();
+
+		this._activated = true;
 	}
-	
+	private function init():Void {
+		LocalStorage.init();
+		this.startFPSCounter();
+	}
 	public function get( s:String ):Selection {
 		var selector = this.selectors.get("*");
 		if ( this.selectors.get(s) == null ) {
@@ -88,7 +108,11 @@ import motion.Actuate;
 		this.childNodes = kids;
 	}
 	
-	public function render() {
+	public function render():Void {
+		this.framesThisSecond++;
+
+		if (!this._activated)
+			return;
 		#if html5
 			this.shape.graphics.clear();
 		#end
@@ -109,6 +133,8 @@ import motion.Actuate;
 	}
 	
 	public function update():Void {
+		if (!this._activated)
+			return;
 		#if !html5
 		removeChild( this.shape );
 		this.shape = new Shape();
@@ -133,6 +159,21 @@ import motion.Actuate;
 		for ( ent in this.childNodes ) {
 			if ( ent.shaded ) ent.shade( this.surface, this );
 		}
+	}
+	public function style(?filter:String):Void {
+		for (runner in this.stylesheets) {
+			if (Reflect.isFunction(runner)) {
+				runner(this);
+			}
+		}
+	}
+	public function stylesheet(code:String):Void {
+		// try {
+			var runner:Stage->Void = GryffinStyles.compile(code);
+			this.stylesheets.push(runner);
+		// } catch (error : String) {
+			// trace(error);
+		// }
 	}
 	
 	public function addEventHandler( type:String, func:Dynamic->Dynamic ) {
@@ -191,6 +232,12 @@ import motion.Actuate;
 			}
 		}
 	}
+	public function setEnv(name:String, value:Dynamic):Void {
+		this.env_vars.set(name, value);
+	}
+	public function getEnv(name:String):Null<Dynamic> {
+		return this.env_vars.get(name);
+	}
 
 	public function bindEvents( ?events:Array<String> ):Void {
 		var me = this;
@@ -199,12 +246,17 @@ import motion.Actuate;
 		}
 		var clickHandler:Dynamic = function(event:flash.events.MouseEvent):Void {
 			var gevent:Dynamic = new gryffin.events.GryffinEvent('click');
-			gevent.data.x = event.stageX;
-			gevent.data.y = event.stageY;
+			gevent.x = event.stageX;
+			gevent.y = event.stageY;
 			var clicked:Null<gryffin.Entity> = null;
 			me.emit('click', gevent);
-			for (child in me.get('!:_cache')) {
-				if (child.contains(gevent.x, gevent.y)) {
+
+			var children:Array<Entity> = me.get('!:_cache').toArray();
+			haxe.ds.ArraySort.sort(children, function ( x:Entity, y:Entity ):Int {
+				return (x.z - y.z);
+			});
+			for (child in children) {
+				if (child.contains(event.stageX, event.stageY)) {
 					if (!gevent.isDefaultPrevented) child.emit('click', gevent);
 					clicked = child;
 				}
@@ -217,6 +269,86 @@ import motion.Actuate;
 		#if mobile
 		this.stage.addEventListener(openfl.events.TouchEvent.TOUCH_TAP, clickHandler);
 		#end
+
+		var resizeHandler:Dynamic = function(event:flash.events.Event):Void {
+			var gevent:Dynamic = new gryffin.events.GryffinEvent('resize');
+			me.setBounds(me.stage.stageWidth, me.stage.stageHeight);
+			me.emit('resize', gevent);
+		};
+		this.stage.addEventListener(flash.events.Event.RESIZE, resizeHandler);
+
+		//- Mouse Move
+		var moveHandler:Dynamic = function(event:flash.events.MouseEvent):Void {
+			var gevent:gryffin.events.GryffinEvent = new gryffin.events.GryffinEvent('click');
+			gevent.x = event.stageX;
+			gevent.y = event.stageY;
+			gevent.ctrlKey = event.ctrlKey;
+
+			var clicked:Null<gryffin.Entity> = null;
+			me.emit('mouse-move', gevent);
+			var kids:Array<Entity> = [for (x in me.get('!:_cache')) x];
+			for (kid in kids) {
+				if (kid.contains(event.stageX, event.stageY)) {
+					if (kid.mouse_over == false) {
+						kid.mouse_over = true;
+						kid.emit('mouse-enter', gevent);
+					}
+					kid.mouse_over = true;
+				} else {
+					if (kid.mouse_over == true) {
+						kid.emit('mouse-leave', gevent);
+					}
+					kid.mouse_over = false;
+				}
+			}
+		};
+		this.stage.addEventListener(flash.events.MouseEvent.MOUSE_MOVE, moveHandler);
+
+		var keyBoardHandler:Dynamic = function(event:flash.events.KeyboardEvent):Void {
+			var type:String = '';
+			switch (event.type) {
+				case flash.events.KeyboardEvent.KEY_DOWN:
+					type = "key-down";
+				case flash.events.KeyboardEvent.KEY_UP:
+					type = "key-up";
+			}
+			var gevent:gryffin.events.GryffinEvent = new gryffin.events.GryffinEvent(type);
+			gevent.keyCode = event.keyCode;
+			gevent.charCode = event.charCode;
+			gevent.ctrlKey = event.ctrlKey;
+			gevent.shiftKey = event.shiftKey;
+			gevent.altKey = event.altKey;
+			gevent.defaultAction = function():Void {
+				if (getEnv('__focused__') != null) {
+					var input:Entity = cast(getEnv('__focused__'), Entity);
+					input.emit(type, gevent);
+				}
+			};
+			me.emit('$type', gevent);
+			gevent.performAction();
+		};
+		this.stage.addEventListener(flash.events.KeyboardEvent.KEY_DOWN, keyBoardHandler);
+		this.stage.addEventListener(flash.events.KeyboardEvent.KEY_UP, keyBoardHandler);
+
+		var scrollHandler:Dynamic = function (event:flash.events.Event):Void {
+			trace(event);
+		}
+
+		this.stage.addEventListener(flash.events.Event.SCROLL, scrollHandler);
+	}
+	public function startFPSCounter():Void {
+		var me = this;
+		function frame() {
+			if (me.fps == 0) {
+				me.fps = me.framesThisSecond;
+				me.framesThisSecond = 0;
+			} else {
+				me.fps = Math.round((me.fps + me.framesThisSecond) / 2);
+				me.framesThisSecond = 0;
+			}
+			Actuate.timer(1).onComplete(frame);
+		};
+		Actuate.timer(1).onComplete(frame);
 	}
 
 	public function containsEntity( item:Entity ):Bool {
@@ -234,5 +366,36 @@ import motion.Actuate;
 		return null;
 	}
 
+//= Private Internal Methods
+	private static function ensureAssetsLoaded( inst:Stage ):Void {
+		if (!_assetsLoaded) {
+			_waitingForAssets.push(inst);
+			inst.on('internal:assets-loaded', function(e:Dynamic):Dynamic {
+				inst._activated = true;
+
+				inst.emit('start', null);
+				return null;
+			});
+		} else {
+			inst.emit('internal:assets-loaded', null);
+		}
+	}
+
+//= Private Internal Properties
 	private static var stages:Array<Stage> = [];
+	private static var _assetsLoaded:Bool;
+	private static var _waitingForAssets:Array<Stage>;
+
+//= Class Initialization Functions
+	private static function __init__():Void {
+		_assetsLoaded = false;
+		_waitingForAssets = new Array();
+		// gryffin.loaders.BaseLoader.on('initial:load-complete', function(fls:Array<Dynamic>):Void {
+		// 	_assetsLoaded = true;
+		// 	for (inst in _waitingForAssets) {
+		// 		inst.emit('internal:assets-loaded', null);
+		// 	}
+		// });
+		// gryffin.Assets.grabAssetFile('assets.json');
+	}
 }

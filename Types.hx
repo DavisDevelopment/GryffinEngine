@@ -3,12 +3,11 @@ package gryffin;
 class Types {
 	public static function basictype( obj:Dynamic ):String {
 		switch ( obj ) {
-			case "": return "String";
-				
 			default:
-				if ( Reflect.getProperty(obj, "indexOf") != null ) {
-					if ( Reflect.getProperty(obj, "join") != null ) return "Array";
-					else return "String";
+				if (Reflect.isEnumValue(obj)) {
+					var enumer:Enum<Dynamic> = Type.getEnum(obj);
+					var enumName:String = Type.getEnumName(enumer);
+					return enumName.substring(enumName.lastIndexOf('.')+1);
 				}
 				else if ( Reflect.isObject(obj) ) {
 					var klass = Type.getClass( obj );
@@ -27,6 +26,10 @@ class Types {
 					}
 					var klassName = Type.getClassName( klass );
 					return klassName.substring(klassName.lastIndexOf('.')+1);
+				}
+				else if ( Reflect.getProperty(obj, "indexOf") != null ) {
+					if ( Reflect.getProperty(obj, "join") != null ) return "Array";
+					else return "String";
 				}
 				else if ( Reflect.isFunction(obj) ) return "Function";
 				else if ( obj == null ) return "Null";

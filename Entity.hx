@@ -7,7 +7,7 @@ import motion.Actuate;
 
 class Entity implements EventSensitive {
 	public var stage(get, set):Null<Stage>;
-	public var parent:Container;
+	public var parent(get, never):Entity;
 	public var id:String;
 	public var width:Int;
 	public var height:Int;
@@ -19,6 +19,7 @@ class Entity implements EventSensitive {
 	public var rotation:Float;
 	public var handlers:Map<String, Array<Dynamic -> Dynamic>>;
 	public var remove:Bool;
+	public var mouse_over:Bool;
 	public var shaded:Bool;
 	public var _hidden:Bool;
 	public var _cache:Bool;
@@ -35,13 +36,14 @@ class Entity implements EventSensitive {
 		this.rotation = 0;
 		this.handlers = new Map();
 		this.remove = false;
+		this.mouse_over = false;
 		this.shaded = false;
 		this._hidden = false;
 		this._cache = false;
 	}
 	
 	public function render( g:Surface, s:Stage ):Void {
-		var stuff:String = "stuff";
+		this.emit('render', this);
 	}
 	
 	public function update( g:Surface, s:Stage ):Void {
@@ -57,7 +59,14 @@ class Entity implements EventSensitive {
 		return myRect.collidesWith( theirRect );
 	}
 	public function contains(x:Float, y:Float, ?z:Float):Bool {
-		var myRect:Rectangle = new Rectangle([this.x, this.y, this.z], [this.width, this.height]);
+		var mx:Float = this.x;
+		var my:Float = this.y;
+		// if (this.parent != null && this.parent.is(':_cascading')) {
+		// 	mx += this.parent.x;
+		// 	my += this.parent.y;
+		// }
+		var myRect:Rectangle = new Rectangle([mx, my, this.z], [this.width, this.height]);
+		if (z == null) z = this.z;
 		var pt:Point = new Point(x, y, z);
 		return myRect.contains(pt);
 	}
@@ -98,6 +107,10 @@ class Entity implements EventSensitive {
 				}
 			}
 		}
+		if (type != '*') {
+			var starData:Array<Dynamic> = [type, data];
+			this.emit('*', starData);
+		}
 	}
 	public function handleEvent( e:Event ):Void {
 		if (this.handlers.exists(e.type)) for (f in this.handlers.get(e.type)) {
@@ -132,15 +145,19 @@ class Entity implements EventSensitive {
 	}
 	public function hide():Void {
 		this._hidden = true;
+		this.emit('hide', null);
 	}
 	public function show():Void {
 		this._hidden = false;
+		this.emit('show', null);
 	}
 	public function cache():Void {
 		this._cache = true;
+		this.emit('cache', null);
 	}
 	public function uncache():Void {
 		this._cache = false;
+		this.emit('uncache', null);
 	}
 	private function get_stage():Null<Stage> {
 		return Stage.getContainingStage(this);
@@ -149,5 +166,17 @@ class Entity implements EventSensitive {
 		if (this.stage != null) this.stage.remove(this);
 		s.add(this);
 		return s;
+	}
+	private function get_parent():Null<Entity> {
+		if (this.stage != null) {
+			var ents:Array<Entity> = this.stage.get('[childNodes][_cascading]').toArray();
+			for (ent in ents) {
+				var kids:Array<Dynamic> = cast(Reflect.getProperty(ent, 'childNodes'), Array<Dynamic>);
+				if (Lambda.has(kids, this)) return ent;
+			}
+			return null;
+		} else {
+			return null;
+		}
 	}
 }

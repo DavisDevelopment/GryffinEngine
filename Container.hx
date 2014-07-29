@@ -1,8 +1,10 @@
 package gryffin;
 
 import flash.display.BitmapData;
+import gryffin.loaders.Parent;
 
-class Container extends Entity {
+class Container extends Entity implements Parent<Entity> {
+	public var _cascading:Bool;
 	public var childNodes:Array < Entity >;
 	public var textures:NativeMap<String, BitmapData>;
 	public var scrollX:Int;
@@ -12,6 +14,7 @@ class Container extends Entity {
 		
 		this.stage = stage;
 		this.childNodes = new Array();
+		this._cascading = false;
 		this.textures = stage.textures;
 		this.width = stage.boundX;
 		this.height = stage.boundY;
@@ -19,7 +22,6 @@ class Container extends Entity {
 	}
 	public function add( item:Entity ):Void {
 		this.childNodes.push( item );
-		item.parent = this;
 	}
 	override public function render( g:Surface, stage:Stage ):Void {
 		for ( child in this.childNodes ) {
