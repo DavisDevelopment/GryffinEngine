@@ -4,6 +4,7 @@ private typedef Handler = { channel:String, func:Dynamic, once:Bool };
 
 class EventDispatcher {
 	public var handlers : Map<String, Array<Handler>>;
+	public var emitted : Map<String, Dynamic>;
 	public var paused : Map<String, Array<Handler>>;
 
 	public function new() {
@@ -30,6 +31,20 @@ class EventDispatcher {
 			}
 		}
 	}
+	public function hasHandler(channel:String, handler:Dynamic):Bool {
+		var applicableChannels:Array<String> = [];
+		for ( key in this.handlers.keys() ) {
+			if (key.indexOf(channel) != -1) applicableChannels.push(key);
+		}
+		var handler_objects:Array<Handler> = new Array();
+		for (chann in applicableChannels) {
+			var sub_handlers:Array<Handler> = handlers.get(chann);
+			handler_objects = handler_objects.concat(sub_handlers);
+		}
+		var handler_functions:Array<Dynamic> = [for (handlr in handler_objects) handlr.func];
+
+		return Lambda.has(handler_functions, handler);
+	}
 
 /*
 	 @method listen ( Void )
@@ -47,12 +62,16 @@ class EventDispatcher {
 		}
 		channelHandlers.push(this.makeHandler(channel, handler, once));
 	}
-	public function on( channel : String, handler : Dynamic, once:Bool = false ):Void {
+
+	public function on( channel : String, handler : Dynamic, ?once:Bool = false ):Void {
 		this.listen( channel, handler, once );
 	}
+
 	public function once(channel:String, handler:Dynamic):Void {
+		handler = gryffin.Utils.invokeOnce(handler);
 		this.on(channel, handler, true);
 	}
+
 	public function broadcast( channel : String, data : Dynamic ):Void {
 		var receivingChannels:Array<String> = [];
 		for ( key in this.handlers.keys() ) {
@@ -62,6 +81,7 @@ class EventDispatcher {
 		for ( key in receivingChannels ) handlers = handlers.concat(this.handlers.get(key));
 		for ( handler in handlers ) this.callHandler( handler, data );
 	}
+
 	public function emit( channel : String, data : Dynamic ):Void {
 		this.broadcast( channel, data );
 	}
@@ -72,7 +92,9 @@ class EventDispatcher {
 		handlerList = handlerList.filter(function(h:Handler) return (h.func != handler));
 		this.handlers.set(channel, handlerList);
 	}
-
+	public function unbind( channel:String ):Void {
+		this.ignore(channel);
+	}
 	public function ignore( channel:String, ?handler:Dynamic ):Void {
 		if ( handler != null ) {
 			this.removeHandler(channel, handler);
@@ -91,4 +113,3 @@ class EventDispatcher {
 
 	}
 }
-

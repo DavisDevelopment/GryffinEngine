@@ -193,6 +193,22 @@ class Parser {
 
 								}
 								return PropValueSortaIs( dat.name, dat.val );
+
+							case Token.TBooleanOperator(operator):
+								var tok = token();
+								if ( tok == null ) unexpected( tk );
+								switch(tok) {
+									case TIdent(v), TString(v):
+										dat.val = v;
+										token();
+									case TNumber(n):
+										dat.val = (n+'');
+										token();
+									default:
+										unexpected(tk);
+
+								}
+								return SelOp.PropValueBoolOp(operator, dat.name, dat.val);
 							
 							default:
 								return Any;

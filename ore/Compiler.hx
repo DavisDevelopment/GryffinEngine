@@ -5,6 +5,7 @@ class Compiler {
 	public var ops:Array < SelOp >;
 	public var testStack:Array < Dynamic -> Bool >;
 	public var helperFunctions:Map < String, Dynamic -> Bool >;
+	public var boolOperators:Map<String, Dynamic->Dynamic->Bool>;
 	public var opFunctions:Map < String, Dynamic -> Bool >;
 	
 	public function new( opList:Array < SelOp > ) {
@@ -12,9 +13,41 @@ class Compiler {
 		this.testStack = new Array();
 		this.helperFunctions = new Map();
 		this.opFunctions = OpFunctions;
+		this.boolOperators = new Map();
+
+		this.initOperators();
+	}
+	private function initOperators():Void {
+		this.boolOperators['>'] = function(x, y):Bool return (x > y);
+		this.boolOperators['<'] = function(x, y):Bool return (x < y);
 	}
 	public function next():SelOp {
 		return this.ops.shift();
+	}
+	public function resolveValueGetter(value:Dynamic):Dynamic->Dynamic {
+		if (Types.basictype(value) == "String") {
+			var val:String = cast(value, String);
+			if (val.substring(0, 1) == "@") {
+				var key:String = val.substring(1);
+				return function(ent:Dynamic):Dynamic {
+					return Reflect.getProperty(ent, key);
+				};
+			}
+		}
+		return function (ent:Dynamic):Dynamic {
+			return (value);
+		};
+	}
+	public function resolveValueTester(op:String):Dynamic->Dynamic->Bool {
+		var tester:Dynamic->Dynamic->Bool = this.boolOperators.get(op);
+		return function(x:Dynamic, y:Dynamic):Bool {
+			try {
+				return tester(x, y);
+			} catch (error : String) {
+				trace(error);
+				return false;
+			}
+		};
 	}
 	public function compileOp( op:SelOp ):Dynamic -> Bool {
 		switch ( op ) {
@@ -57,13 +90,22 @@ class Compiler {
 					};
 				}
 			case PropValueIs( name, value ):
+				var getter:Dynamic->Dynamic = resolveValueGetter(value);
 				if ( this.opFunctions.exists("PropValueIs") ) {
 					return this.opFunctions.get("PropValueIs");
 				} else {
 					return function ( ent ) {
-						return (Reflect.getProperty( ent, name ) == value);
+						return (Reflect.getProperty( ent, name ) == getter(ent));
 					};
 				}
+			case SelOp.PropValueBoolOp(operator, name, value):
+				var getter:Dynamic->Dynamic = resolveValueGetter(value);
+				var tester:Dynamic->Dynamic->Bool = resolveValueTester(operator);
+				return function(ent) {
+					var prop:Dynamic = Reflect.getProperty(ent, name);
+					return (tester(prop, getter(value)));
+				};
+			
 			case PropValueSortaIs( name, value ):
 				if ( this.opFunctions.exists("PropValueSortaIs") ) {
 					return this.opFunctions.get("PropValueSortaIs");

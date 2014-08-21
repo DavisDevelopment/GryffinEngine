@@ -1,5 +1,6 @@
 package gryffin.utils;
 
+@:expose
 class PathTools {
 	public static function drive(path:String):String {
 		var drive_detect:EReg = ~/([A-Za-z0-9]+:\\\\)/i;
@@ -15,6 +16,16 @@ class PathTools {
 		copy = StringTools.replace(copy, '\\', PATH_DELIMITER);
 		copy = StringTools.replace(copy, '//', PATH_DELIMITER);
 		return copy;
+	}
+	public static function simplify(path:String):String {
+		path = normalize(path);
+		if (path.charAt(0) == PATH_DELIMITER) {
+			path = path.substring(1);
+		}
+		if (path.charAt(path.length - 1) == PATH_DELIMITER) {
+			path = path.substring(0, path.length - 1);
+		}
+		return path;
 	}
 	public static function split(path:String):Array<String> {
 		var reg:String = normalize(path);
@@ -54,6 +65,10 @@ class PathTools {
 			result = resolve(result, path);
 		}
 		return result;
+	}
+	public static function joinWith(base:String, others:Array<String>):String {
+		var set:Array<String> = [base].concat(others);
+		return join(set);
 	}
 	public static function dirname(path:String):String {
 		var pieces:Array<String> = split(path);

@@ -11,7 +11,7 @@ class Lexer {
 		return ~/[0-9]/.match( c );
 	}
 	private function isAlphaNumeric( c:String ):Bool {
-		return ~/[A-Za-z0-9_\-]/.match(c);
+		return ~/[A-Za-z0-9_\-@]/.match(c);
 	}
 	private function advance():String {
 		return this.input.shift();
@@ -106,6 +106,14 @@ class Lexer {
 					advance();
 				}
 				else push(TEquals);
+			}
+			else if ( c == ">" || c == "<" ) {
+				var op:String = c;
+				if (next() == "=") {
+					op += next();
+					advance();
+				}
+				push(Token.TBooleanOperator(op));
 			}
 			else if ( c == "!" ) {
 				if ( next() == "=" ) {

@@ -1,8 +1,31 @@
 package gryffin;
 
+import gryffin.utils.Memory;
 import flash.media.Sound;
+import motion.actuators.GenericActuator;
+import motion.Actuate;
+
+import haxe.io.Bytes;
+import openfl.utils.ByteArray;
 
 class Utils {
+	public static function setInterval(delay:Float, action:Dynamic, ?params:Array<Dynamic>):Int {
+		if (params == null) params = new Array();
+		var id:Int = Memory.uniqueID();
+		var tween:Dynamic;
+
+		function queueNext() {
+			if (Reflect.isFunction(action))
+				Reflect.callMethod(null, action, params);
+			tween = Actuate.timer(delay);
+			tweens.set(id, tween);
+			tween.onComplete(queueNext, null);
+		}
+		tween = Actuate.timer(delay);
+		tweens.set(id, tween);
+		tween.onComplete(queueNext, null);
+		return id;
+	}
 	public static function bindFunction( o:Dynamic, f:Dynamic ):Array < Dynamic > -> Dynamic {
 		return function ( args:Array <Dynamic> ):Dynamic {
 			return Reflect.callMethod( o, f, args );
@@ -89,6 +112,17 @@ class Utils {
 		}
 		return result;
 	}
+	public static function ByteArrayToBytes(bits:ByteArray):Bytes {
+		var bytes:Bytes = Bytes.alloc(bits.length);
+		bits.position = 0;
+
+		while (bits.bytesAvailable > 0) {
+			var pos:Int = bits.position;
+			bytes.set(pos, bits.readByte());
+		}
+
+		return bytes;
+	}
 	public static function getClassName( o:Entity ):String {
 		var klass = Type.getClass( o );
 		var name = Type.getClassName( klass );
@@ -115,26 +149,29 @@ class Utils {
 	public static function hasField( o:Dynamic, field:String ):Bool {
 		return (Reflect.getProperty( o, field ) != null);
 	}
-	public static function degrees(rads:Float):Float {
+	public static inline function degrees(rads:Float):Float {
 		return (rads * 180 / Math.PI);
 	}
-	public static function radians(degs:Float):Float {
+	public static inline function radians(degs:Float):Float {
 		return (degs * Math.PI / 180);
 	}
-	public static function distance( x1:Float, y1:Float, x2:Float, y2:Float ):Int {
+	public static inline function distance( x1:Float, y1:Float, x2:Float, y2:Float ):Int {
 		var dx:Int = Math.round(Math.abs(x2 - x1));
 		var dy:Int = Math.round(Math.abs(y2 - y1));
 		dx = dx*dx;
 		dy = dy*dy;
 		return Math.round(Math.sqrt(dx + dy));
 	}
-	public static function angleBetween(x1:Float, y1:Float, x2:Float, y2:Float):Float {
+	public static inline function angleBetween(x1:Float, y1:Float, x2:Float, y2:Float):Float {
 		return (Math.atan2(x2 - x1, y2 - y1) * 180 / Math.PI);
 	}
 	public static function isPointInRect( point:{x:Int, y:Int}, rect:{x:Int, y:Int, width:Int, height:Int} ):Bool {
 		var inX:Bool = (point.x > rect.x && point.x < rect.x + rect.width);
 		var inY:Bool = (point.y > rect.y && point.y < rect.y + rect.height);
 		return ( inX && inY );
+	}
+	public static inline function range(min:Int, max:Int):Array<Int> {
+		return [for (i in 0...(max+1)) i];
 	}
 	public static function largest( list:Array < Float > ):Null<Float> {
 		var largest:Null<Float> = null;
@@ -149,6 +186,22 @@ class Utils {
 			if ( smallest == null || smallest > x ) smallest = x;
 		}
 		return smallest;
+	}
+	public static function most_frequent(list:Iterable<Dynamic>):Dynamic {
+		var arr:Array<Dynamic> = Lambda.array(list);
+		var counts:Map<Int, Int> = new Map();
+		for (index in 0...arr.length-1) {
+			var item:Dynamic = arr[index];
+			var count:Int = (counts.exists(index)?counts.get(index):0);
+			counts.set(index, (count + 1));
+		}
+		var most:Null<Int> = null;
+		for (item in list) {
+			var index:Int = Lambda.indexOf(arr, item);
+			if (most == null || counts.get(index) > counts.get(most)) most = index;
+		}
+
+		return (most != null ? arr[most] : Lambda.array(list)[0]);
 	}
 	public static function arraySmallest<T>(set:Array<T>, predicate:T->Float):Null<T> {
 		var smallestItem:Null<T> = null;
@@ -185,5 +238,21 @@ class Utils {
 			}
 		}
 		return result;
+	}
+	public static inline function uniqueItems<T>(set:Iterable<T>):Array<T> {
+		var list:Array<T> = Lambda.array(set);
+		var unique:Array<T> = new Array();
+		for (item in list) {
+			if (!Lambda.has(unique, item))
+				unique.push(item);
+		}
+		return unique;
+	}
+
+
+	private static var tweens:Map<Int, Dynamic>;
+
+	private static function __init__():Void {
+		tweens = new Map();
 	}
 }

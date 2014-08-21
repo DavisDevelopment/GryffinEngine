@@ -10,7 +10,6 @@ import flash.filters.ColorMatrixFilter;
 import flash.geom.Rectangle;
 import flash.geom.Matrix;
 
-
 import gryffin.Surface;
 import gryffin.Types;
 import gryffin.display.CanvasCommand;
@@ -22,10 +21,13 @@ import gryffin.utils.MapTools;
 import gryffin.utils.Memory;
 
 class Canvas {
+	private var stage:Stage;
 	private var updated:Bool;
+	private var _dummyShape:Shape;
 	//- Geometric Properties
 	public var x:Int;
 	public var y:Int;
+	public var z:Int;
 	public var width(default, set):Int;
 	public var height(default, set):Int;
 	public var rotation(default, set):Int;
@@ -43,7 +45,7 @@ class Canvas {
 	public var alpha:Float;
 
 	public var lineSize:Float;
-	public var lineColor:Dynamic;
+	public var lineColor:PencilType;
 	public var fillColor:PencilType;
 	public var geoMatrix:Matrix;
 	public var textSize:Float;
@@ -53,12 +55,15 @@ class Canvas {
 	public var filters:Array<BitmapFilter>;
 
 	public function new(width:Int, height:Int) {
+		this.stage = Stage.getActiveStage();
 		this.updated = true;
+		this._dummyShape = new Shape();
 
 		this.width = width;
 		this.height = height;
 		this.x = 0;
 		this.y = 0;
+		this.z = 0;
 
 		this.bitmap = new BitmapData(width, height, true, 0x000000);
 		this.sprite = new Sprite('');
@@ -86,8 +91,8 @@ class Canvas {
 		return {
 			'geoMatrix': new Matrix(),
 			'alpha': 255,
-			'lineSize': 3,
-			'lineColor': "#000000",
+			'lineSize': 0,
+			'lineColor': PencilType.PSolidColor('#000000'),
 			'fillColor': PencilType.PSolidColor('#000000'),
 			'textSize': 12,
 			'textColor': '#000000',
@@ -109,6 +114,9 @@ class Canvas {
 			var val:Dynamic = Reflect.getProperty(this, key);
 			Reflect.setProperty(dummy, key, val);
 		}
+		#if html5
+			dummy.geoMatrix = new Matrix();
+		#end
 		return dummy;
 	}
 	private function get_state():State {
@@ -118,7 +126,7 @@ class Canvas {
 		this.restoreState(st);
 		return st;
 	}
-	public function setFillColor(st:Dynamic):PencilType {
+	private inline function getPencilType(st:Dynamic):PencilType {
 		var type:String = Types.basictype(st);
 		var ptype:Null<PencilType> = null;
 		switch (type) {
@@ -131,7 +139,16 @@ class Canvas {
 			case "PencilType":
 				ptype = cast(st, PencilType);
 		}
+		return ptype;
+	}
+	public function setFillColor(st:Dynamic):PencilType {
+		var ptype:PencilType = getPencilType(st);
 		this.fillColor = ptype;
+		return ptype;
+	}
+	public function setLineColor(st:Dynamic):PencilType {
+		var ptype:PencilType = getPencilType(st);
+		this.lineColor = ptype;
 		return ptype;
 	}
 	public function save():Void {
@@ -152,7 +169,7 @@ class Canvas {
 		this.state.geoMatrix.scale(x, y);
 	}
 	public function invert():Void {
-		this.geoMatrix.invert();
+		this.state.geoMatrix.invert();
 	}
 	public function shadow(?distance:Float, ?angle:Float, ?color:UInt, ?alpha:Float, ?blurX:Float, ?blurY:Float, ?strength:Float, ?quality:Int, ?inner:Bool, ?knockout:Bool, ?hideObject:Bool):Void {
 		var filter:BitmapFilter = new DropShadowFilter(distance, angle, color, alpha, blurX, blurY, strength, quality, inner, knockout, hideObject);
@@ -210,11 +227,27 @@ class Canvas {
 		args.push(this.state);
 		command((round ? 'SRoundRect' : 'SRect'), args);
 	}
+	public function polygon(vertices:Array<Array<Int>>):Void {
+		var args:Array<Dynamic> = [vertices, this.state];
+		command('SPolygon', args);
+	}
 	public function text(txt:String, x:Int, y:Int):Void {
 		var args:Array<Dynamic> = [txt, x, y, this.state];
 		command('SText', args);
 	}
-	public function circle(x:Int, y:Int, radius:Int):Void {
+	public function measureText(txt:String):Array<Int> {
+		var s:Surface = stage.surface;
+		var decs:Array<String> = this.state.textDecoration.split(' ');
+		var tform:Map<String, Dynamic> = [
+			"size" => this.state.textSize,
+			"font" => this.state.textFont,
+			"bold" => Lambda.has(decs, 'bold'),
+			"italic" => Lambda.has(decs, 'italic')
+		];
+		var area:Array<Int> = s.measureText(txt, tform);
+		return area;
+	}
+	public function circle(x:Int, y:Int, radius:Float):Void {
 		var args:Array<Dynamic> = [x, y, radius, this.state];
 		command('SCircle', args);
 	}
@@ -261,7 +294,42 @@ class Canvas {
 				trace(this.fillColor);
 		}
 	}
+	public function useAppropriateLineStyle(g:Graphics, s:Surface):Void {
+		if (this.lineSize == 0) {
+			return;
+		}
+		switch (this.lineColor) {
+			case PencilType.PSolidColor(color):
+				g.lineStyle(this.lineSize, Colors.parse(color), this.alpha);
+
+			case PencilType.PLinearGradient(fcp, colorStops):
+			#if !html5
+				var colors:Array<Float> = [];
+				var alphas:Array<Float> = [];
+				var ratios:Array<Float> = [];
+				for (pair in colorStops) {
+					var ratio:Float = Std.parseFloat(pair[0] + '');
+					var color = Colors.parse(pair[1] + '');
+					var alpha:Null<Float> = (pair[2] != null?Std.parseFloat(pair[2] + ''):null);
+					ratios.push(Math.round(ratio * 255));
+					alphas.push(alpha != null?alpha:1);
+					colors.push(color);
+				}
+				var icolors:Array<UInt> = [for (c in colors) cast(Std.int(c), UInt)];
+				g.lineGradientStyle(openfl.display.GradientType.LINEAR, icolors, alphas, ratios, null, null, null, fcp);
+			#else
+				var color:Int = 0;
+				color = Colors.parse(colorStops[colorStops.length - 1][1] + '');
+				var alpha:Float = Std.parseFloat(colorStops[colorStops.length - 1][2] + '');
+				g.lineStyle(this.lineSize, color, alpha);
+			#end
+
+			default:
+				trace("Unknown PencilType($lineColor)");
+		}
+	}
 	public function drawCommand(com:Command, s:Surface):Void {
+		var i = Math.round.bind(_);
 		var c:BitmapData = this.bitmap;
 		switch (com) {
 			case SLine(sx, sy, dx, dy, state):
@@ -276,6 +344,7 @@ class Canvas {
 				g.endFill();
 
 				this.bitmap.draw(dum, this.state.geoMatrix);
+
 				restore();
 
 			case SRect(x, y, width, height, state):
@@ -284,6 +353,7 @@ class Canvas {
 				var dum:Shape = dummShape();
 				var g:Graphics = dum.graphics;
 				//g.lineStyle(this.lineSize, Colors.parse(this.lineColor), this.alpha);
+				useAppropriateLineStyle(g, s);
 				startAppropriateFill(g, s);
 				g.drawRect(x, y, width, height);
 				g.endFill();
@@ -296,10 +366,31 @@ class Canvas {
 				restoreState(state);
 				var dum:Shape = dummShape();
 				var g:Graphics = dum.graphics;
+				useAppropriateLineStyle(g, s);
 				startAppropriateFill(g, s);
 				g.drawRect(x, y, width, height);
 				g.endFill();
 				restore();
+
+			case SPolygon(vertices, state):
+				save();
+				restoreState(state);
+				var dum:Shape = dummShape();
+				var graphics:Graphics = dum.graphics;
+
+				useAppropriateLineStyle(graphics, s);
+			    startAppropriateFill(graphics, s);
+			    var fp:Array<Int> = vertices.shift();
+			    graphics.moveTo(i(fp[0]), i(fp[1]));
+			    for(p in vertices) {
+			        graphics.lineTo(i(p[0]), i(p[1]));
+			    }
+			    graphics.lineTo(i(fp[0]), i(fp[1]));
+			    graphics.endFill();
+
+			    this.bitmap.draw(dum, this.state.geoMatrix);
+
+			    restore();
 
 			case SCircle(x, y, radius, state):
 				save();
@@ -307,6 +398,7 @@ class Canvas {
 				var dum = dummShape();
 				var g:Graphics = dum.graphics;
 
+				useAppropriateLineStyle(g, s);
 				startAppropriateFill(g, s);
 				g.drawCircle(x, y, radius);
 				g.endFill();

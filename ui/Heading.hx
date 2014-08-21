@@ -9,39 +9,45 @@ import gryffin.geom.Point;
 import gryffin.utils.MapTools;
 import gryffin.Colors;
 
-class Heading extends Entity {
+import gryffin.display.Canvas;
+import gryffin.ui.UIElement;
+
+class Heading extends UIElement {
+
 	public var text:String;
-	public var text_settings:Map<String, Dynamic>;
-	public var color:Dynamic;
+	public var canvas:Canvas;
 
 	public function new(text:String) {
 		super();
 		this.text = text;
 		this.color = "#000000";
-		this.text_settings = new Map();
+
 		var me = this;
-		this.on('activate', function(e:Dynamic) {
-			me.init();
-			return null;
-		});
+		this.on('activate', init);
 	}
 	public function init():Void {
-		var defaults:Map<String, Dynamic> = [
-			"size" => 24,
-			"bold" => false,
-			"italic" => false
-		];
-		this.text_settings = MapTools.merge(this.text_settings, defaults);
+		this.canvas = new Canvas(this.width, this.height);
+		draw();
 	}
-	public function configure(key:String, value:Dynamic):Void {
-		this.text_settings.set(key, value);
+	public function draw():Void {
+		this.canvas.width = this.width;
+		this.canvas.height = this.height;
+		canvas.clear();
+		canvas.save();
+
+		canvas.textColor = this.color;
+		canvas.textSize = this.fontSize;
+		canvas.text(this.text, 1, 1);
+
+		canvas.restore();
 	}
 	override public function render(g:Surface, stage:Stage):Void {
-		var size = g.measureText(this.text, this.text_settings);
-		g.drawText(this.text, this.x, this.y, size[0] + 5, size[1] + 5, this.color, this.text_settings);
-		super.render(g, stage);
+		g.drawCanvas(this.canvas);
 	}
 	override public function update(g:Surface, stage:Stage):Void {
-		this.init();
+		var area:Array<Int> = canvas.measureText(this.text);
+
+		this.width = Math.ceil(area[0] + this.padding);
+		this.height = Math.ceil(area[1] + this.padding);
 	}
 }

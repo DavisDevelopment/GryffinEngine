@@ -1,13 +1,19 @@
 package gryffin;
 import flash.events.MouseEvent;
 import flash.events.Event;
+
+import gryffin.EventDispatcher;
 import gryffin.geom.Rectangle;
 import gryffin.geom.Point;
 import motion.Actuate;
 
-class Entity implements EventSensitive {
+class Entity extends EventDispatcher implements EventSensitive {
+	private var to_autoemit:Map<String, Dynamic>;
+
 	public var stage(get, set):Null<Stage>;
 	public var parent(get, never):Entity;
+	public var rect(get, never):Rectangle;
+	
 	public var id:String;
 	public var width:Int;
 	public var height:Int;
@@ -17,7 +23,6 @@ class Entity implements EventSensitive {
 	public var vx:Float;
 	public var vy:Float;
 	public var rotation:Float;
-	public var handlers:Map<String, Array<Dynamic -> Dynamic>>;
 	public var remove:Bool;
 	public var mouse_over:Bool;
 	public var shaded:Bool;
@@ -25,6 +30,10 @@ class Entity implements EventSensitive {
 	public var _cache:Bool;
 
 	public function new() {
+		super();
+
+		this.to_autoemit = new Map();
+
 		this.id = (Types.basictype(this) + '-' + gryffin.utils.Memory.uniqueID());
 		this.width = 0;
 		this.height = 0;
@@ -47,11 +56,21 @@ class Entity implements EventSensitive {
 	}
 	
 	public function update( g:Surface, s:Stage ):Void {
-		var stuff:String = "stuff";
+		this.emit('update', this);
 	}
 	public function is( sel:String ):Bool {
 		var selector = Selector.compile(sel);
 		return selector(this);
+	}
+	public function describe():String {
+		return '.${Types.basictype(this)}#$id';
+	}
+	private function should_autoemit(channel:String):Bool {
+		var autoers:Array<String> = [for (channl in to_autoemit.keys()) channl];
+		return Lambda.has(autoers, channel);
+	}
+	private inline function get_rect():Rectangle {
+		return new Rectangle([this.x, this.y, this.z], [this.width, this.height]);
 	}
 	public function collidesWith( o:Dynamic ):Bool {
 		var myRect:Rectangle = new Rectangle([this.x, this.y, this.z], [this.width, this.height]);
@@ -61,14 +80,21 @@ class Entity implements EventSensitive {
 	public function contains(x:Float, y:Float, ?z:Float):Bool {
 		var mx:Float = this.x;
 		var my:Float = this.y;
-		// if (this.parent != null && this.parent.is(':_cascading')) {
-		// 	mx += this.parent.x;
-		// 	my += this.parent.y;
-		// }
-		var myRect:Rectangle = new Rectangle([mx, my, this.z], [this.width, this.height]);
+		var myRect:Rectangle = new Rectangle([this.x, this.y, this.z], [this.width, this.height]);
 		if (z == null) z = this.z;
 		var pt:Point = new Point(x, y, z);
 		return myRect.contains(pt);
+	}
+	public function getCorners():Array<Point> {
+		var points:Array<Point> = new Array();
+		var rect:Rectangle = new Rectangle([this.x, this.y, this.z], [this.width, this.height]);
+
+		points.push(new Point(rect.x, rect.y, rect.z));
+		points.push(new Point(rect.x + rect.width, rect.y, rect.z));
+		points.push(new Point(rect.x + rect.width, rect.y + rect.height, rect.z));
+		points.push(new Point(rect.x, rect.y + rect.height, rect.z));
+
+		return points;
 	}
 	public function getHitmask():Array<Point> {
 		var points:Array<Point> = [];
@@ -79,43 +105,12 @@ class Entity implements EventSensitive {
 		}
 		return points;
 	}
-	public function addEventHandler( type:String, f:Dynamic -> Dynamic ):Void {
-		if (this.handlers.exists(type)) {
-			this.handlers.get(type).push(f);
-		} else {
-			var list:Array < Dynamic -> Dynamic > = [f];
-			this.handlers.set(type, list);
-		}
-	}
-	public function on( type:String, f:Dynamic -> Dynamic ):Void {
-		this.addEventHandler( type, f );
-	}
-	public function once( type:String, f:Dynamic->Dynamic ):Void {
+	public function delayCall(delay:Float, name:String, args:Array<Dynamic>):Void {
+		var method:Dynamic = Reflect.getProperty(this, name);
 		var me = this;
-		this.on(type, Utils.invokeOnce(function(data:Dynamic):Dynamic {
-			return f(data);
-		}));
-	}
-	public function unbind( type:String ):Void {
-		this.handlers.remove( type );
-	}
-	public function emit( type:String, data:Dynamic ):Void {
-		for ( key in this.handlers.keys() ) {
-			if ( key.indexOf(type) == 0 ) {
-				for (f in this.handlers.get(key)) {
-					Reflect.callMethod( this, f, [data] );
-				}
-			}
-		}
-		if (type != '*') {
-			var starData:Array<Dynamic> = [type, data];
-			this.emit('*', starData);
-		}
-	}
-	public function handleEvent( e:Event ):Void {
-		if (this.handlers.exists(e.type)) for (f in this.handlers.get(e.type)) {
-			f(e);
-		}
+		Actuate.timer(delay).onComplete(function() {
+			Reflect.callMethod(me, method, args);
+		}, null);
 	}
 	public function animate( duration:Float, props:Dynamic ):Void {
 		if (Reflect.getProperty(props, "complete") != null) {
@@ -142,6 +137,17 @@ class Entity implements EventSensitive {
 			while ( dis % increment != 0 ) --dis;
 			return (32 - (dis/increment) - 1);
 		}
+	}
+	override public function listen(channel:String, handler:Dynamic, once:Bool = false):Void {
+		if (!should_autoemit(channel)) {
+			super.listen(channel, handler, once);
+		} else {
+			this.callHandler(this.makeHandler(channel, handler, once), to_autoemit[channel]);
+		}
+	}
+	public function autoemit(channel:String, msg:Dynamic):Void {
+		this.emit(channel, msg);
+		this.to_autoemit[channel] = msg;
 	}
 	public function hide():Void {
 		this._hidden = true;

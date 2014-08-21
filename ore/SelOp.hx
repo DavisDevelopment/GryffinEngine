@@ -10,6 +10,7 @@ enum SelOp {
 	PropValueIs( name:String, value:Dynamic );
 	PropValueSortaIs( name:String, value:Dynamic );
 	PropValueIsnt( name:String, value:Dynamic );
+	PropValueBoolOp(operator:String, name:String, value:Dynamic);
 	PropValueMatches( name:String, op:SelOp );
 	PropClassIs( name:String, type:String );
 	Or( lop:SelOp, rop:SelOp );

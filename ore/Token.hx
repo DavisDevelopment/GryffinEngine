@@ -21,4 +21,5 @@ enum Token {
 	TDEquals;
 	TArrow;
 	TSemiEquals;
+	TBooleanOperator(operator:String);
 }

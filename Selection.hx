@@ -3,39 +3,55 @@ package gryffin;
 typedef Handler = Dynamic -> Dynamic;
 
 class Selection {
+	private var live_handlers:Map<String, Array<Dynamic>>;
+	public var from_array:Bool;
+	private var _stage:Stage;
+
 	public var items:Array < Entity >;
 	public var length(get, never):Int;
 	public var selector:String;
 	public var selectorFunction: Entity -> Bool;
-	public var stage:Stage;
-	public function new( sel:String, stage:Stage ) {
-		this.stage = stage;
+
+	public var stage(get, never):Stage;
+	public function new(sel:String, ?stage:Null<Stage>):Void {
+		this.live_handlers = new Map();
 		this.selector = sel;
 		this.selectorFunction = this.getSelectorFunction(sel);
 		this.items = this.getMatches(stage.childNodes);
-		
+
+		this.from_array = false;
+	}
+	private inline function get_stage():Stage {
+		return Stage.stages[0];
 	}
 	private function getMatches( set:Array<Dynamic> ):Array<Entity> {
-		var result:Array < Dynamic > = [];
-		for ( item in set ) {
-			var add:Bool = this.selectorFunction(item);
-			if ( add ) result.push(item);
-			if (Utils.hasField(item, "childNodes")) {
-				result = result.concat(this.getMatches(cast(Reflect.getProperty(item, "childNodes"), Array<Dynamic>)));
+		if (this.from_array) {
+			return this.items;
+		} else {
+			var result:Array < Dynamic > = [];
+			for ( item in set ) {
+				var add:Bool = this.selectorFunction(item);
+				if ( add ) result.push(item);
+				if (Utils.hasField(item, "childNodes")) {
+					result = result.concat(this.getMatches(cast(Reflect.getProperty(item, "childNodes"), Array<Dynamic>)));
+				}
 			}
+			return [for (x in result) cast(x, Entity)];
 		}
-		return [for (x in result) cast(x, Entity)];
 	}
 	public function update():Void {
 		this.items = this.getMatches(this.stage.childNodes);
 	}
-	public function at( pos:Int ):Entity {
+	public inline function at( pos:Int ):Entity {
 		return this.items[pos];
 	}
-	public function iterator():Iterator < Entity > {
+	public inline function indexOf(ent : Entity):Int {
+		return this.items.indexOf(ent);
+	}
+	public inline function iterator():Iterator < Entity > {
 		return this.items.iterator();
 	}
-	@:to public function toArray():Array<Entity> {
+	public inline function toArray():Array<Entity> {
 		return [for (x in this) x];
 	}
 	public function each(lambdaFunc:Entity->Int->Void):Void {
@@ -48,6 +64,9 @@ class Selection {
 	public function is( filter:String ):Bool {
 		var selFunc:Entity->Bool = this.getSelectorFunction(filter);
 		return (this.at(0).is(filter));
+	}
+	public inline function filter(description:String):Selection {
+		return new Selection('($selector)&($description)');
 	}
 	public function on( type:String, f:Handler ):Void {
 		for ( item in this.items ) item.on( type, f );
@@ -74,6 +93,9 @@ class Selection {
 			}
 		}
 	}
+	public inline function live(channel:String, handler:Dynamic):Void {
+		this.stage.live(selector, channel, handler);
+	}
 	public function call(method:String, args:Array<Dynamic>):Void {
 		for ( item in this.items ) {
 			var func:Dynamic = Reflect.getProperty(item, method);
@@ -83,6 +105,9 @@ class Selection {
 				null;
 			}
 		}
+	}
+	public inline function attr(key:String):Null<Dynamic> {
+		return Reflect.getProperty(this.at(0), key);
 	}
 	public function destroy( ?filter:String ):Void {
 		for ( item in this.items ) {
@@ -96,6 +121,14 @@ class Selection {
 				item.destroy( this.stage );
 			}
 		}
+	}
+	public function contains(x:Float, y:Float, ?z:Float):Array<Entity> {
+		var i = Math.round.bind(_);
+		var thatContained:Array<Entity> = [];
+		for (item in this.items) {
+			if (item.contains(x, y, z)) thatContained.push(item);
+		}
+		return thatContained;
 	}
 	public function cache():Void {
 		for ( item in this.items ) {
@@ -135,5 +168,13 @@ class Selection {
 	private static var _useCache:Bool = false;
 	private static function __init__():Void {
 		_filterCache = new Map();
+	}
+
+	public static function fromArray(list : Array<Entity>):Selection {
+		var dummy:Selection = new Selection("*");
+		dummy.items = list;
+		dummy.from_array = true;
+
+		return dummy;
 	}
 }

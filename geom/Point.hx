@@ -10,13 +10,16 @@ class Point {
 		this.y = y;
 		this.z = z;
 	}
-	public function distanceTo(other:Point):Float {
+	public inline function distanceTo(other:Point):Float {
 		return gryffin.Utils.distance(this.x, this.y, other.x, other.y);
 	}
-	public function is(x:Int, y:Int, z:Int = 0):Bool {
+	public inline function relativeTo(other:Point):Point {
+		return new Point((this.x - other.x), (this.y - other.y), (this.z - other.z));
+	}
+	public inline function is(x:Int, y:Int, z:Int = 0):Bool {
 		return (this.x == x && this.y == y && this.z == z);
 	}
-	public function clone():Point {
+	public inline function clone():Point {
 		return new Point(this.x, this.y, this.z);
 	}
 }

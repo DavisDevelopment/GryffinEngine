@@ -1,8 +1,5 @@
 package gryffin;
 
-// import gryffin.selector.Lexer;
-// import gryffin.selector.Parser;
-// import gryffin.selector.Compiler;
 
 import gryffin.ore.Lexer;
 import gryffin.ore.Parser;

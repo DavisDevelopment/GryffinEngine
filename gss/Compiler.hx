@@ -7,8 +7,8 @@ import gryffin.Utils;
 
 import openfl.Assets;
 
-import hscript.Parser;
-import hscript.Interp;
+import gryffin.gscript.Parser;
+import gryffin.gscript.Interp;
 
 class Compiler {
 	public var ast:Array<Node>;

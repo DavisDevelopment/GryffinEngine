@@ -10,12 +10,14 @@ import motion.Actuate;
 //- Gryffin imports
 import gryffin.gss.GryffinStyles;
 import gryffin.storage.LocalStorage;
+import gryffin.storage.fs.FileSystem;
 
 @:expose class Stage extends Sprite {
 	public var fps:Int;
 	private var framesThisSecond:Int;
 	private var _activated:Bool;
 	private var selectors:Map<String, Selection>;
+	private var live_handlers:Map<String, Array<{channel:String, handler:Dynamic}>>;
 	private var env_vars:Map<String, Dynamic>;
 	public var textures:NativeMap<String, BitmapData>;
 	public var sounds:NativeMap<String, Sound>;
@@ -29,6 +31,7 @@ import gryffin.storage.LocalStorage;
 	public var boundX:Int;
 	public var boundY:Int;
 	public var childNodes:Array<Entity>;
+	public var childDescriptions:Array<String>;
 	public var surface:Surface;
 	public var handlers:Map<String, Array<Dynamic->Dynamic>>;
 	private var stylesheets:Array<Dynamic>;
@@ -39,12 +42,14 @@ import gryffin.storage.LocalStorage;
 
 		this.fps = 0;
 		this.framesThisSecond = 0;
+		this.live_handlers = new Map();
 		this.handlers = new Map();
 		this.shape = new Shape();
 		this.sprite = new Sprite();
 		this.boundX = 200;
 		this.boundY = 200;
 		this.childNodes = [];
+		this.childDescriptions = [];
 		this.sceneName = "game";
 		this.selectors = new Map();
 		this.stylesheets = new Array();
@@ -83,8 +88,24 @@ import gryffin.storage.LocalStorage;
 		haxe.ds.ArraySort.sort(this.childNodes, function ( x:Entity, y:Entity ):Int {
 			return (x.z + y.z);
 		});
+		this.bind_live_events(item);
 		this.emit('activate:${Types.basictype(item)}', item);
 		item.emit('activate', this);
+
+		this.childDescriptions.push(item.describe());
+	}
+	private function bind_live_events(item : Entity):Void {
+		var keys = [for (x in live_handlers.keys()) x];
+
+		for (sel in keys) {
+			if (item.is(sel)) {
+				for (reg in live_handlers[sel]) {
+					if (!item.hasHandler(reg.channel, reg.handler)) {
+						item.listen(reg.channel, reg.handler, false);
+					}
+				}
+			}
+		}
 	}
 	public function setChildren( items:Array <Entity> ) {
 		for ( child in this.childNodes ) {
@@ -131,7 +152,6 @@ import gryffin.storage.LocalStorage;
 			'height' : y
 		});
 	}
-	
 	public function update():Void {
 		if (!this._activated)
 			return;
@@ -140,9 +160,6 @@ import gryffin.storage.LocalStorage;
 		this.shape = new Shape();
 		this.surface.setGraphics( this.shape.graphics );
 		addChild( this.shape );
-		this.shape.addEventListener( "click", function( e:MouseEvent ):Void {
-			this.handleEvent( e );
-		});
 		#end
 		this.childNodes = this.childNodes.filter(function(ent) {
 			return !ent.remove;
@@ -184,35 +201,7 @@ import gryffin.storage.LocalStorage;
 			listOfHandlers.push(func);
 		}
 	}
-	
-	public function handleEvent( e:Dynamic, ?type:String ) {
-		if ( type != null ) {
-			if (this.handlers.exists(type)) for (f in this.handlers.get(type)) f(e);
-		} else 	{
-			if (Reflect.getProperty(e, "type") != null ) {
-				if (this.handlers.exists(e.type)) for (f in this.handlers.get(e.type)) f(e);
-			} else {
-				trace("Event Trigger Failed");
-			}
-		}
-		var x:Float = e.stageX;
-		var y:Float = e.stageY;
-		var children = this.childNodes.copy();
-		children.reverse();
-		for ( item in children ) {
-			var touchingX:Bool = ( x > item.x && x < item.x + item.width );
-			var touchingY:Bool = ( y > item.y && y < item.y + item.height );
-			if ( touchingX && touchingY ) {
-				if ( type != null ) {
-					item.emit(type, e);
-				} else {
-					item.handleEvent( e );
-				}
-				break;
-			}
-		}
-		return null;
-	}
+
 	//Various 'getter' functions
 	public function getScene() {
 		return this.sceneName;
@@ -224,6 +213,26 @@ import gryffin.storage.LocalStorage;
 	}
 	public function on( type:String, func:Dynamic -> Dynamic ):Void {
 		this.addEventHandler( type, func );
+	}
+	public function live(selector:String, channel:String, handler:Dynamic):Void {
+		var key:String = selector;
+		var registry:Dynamic = {
+			'channel' : channel,
+			'handler' : handler
+		};
+
+		if (live_handlers.exists(selector)) {
+			if (Lambda.has(live_handlers[selector], registry)) return;
+		}
+
+		var handler_holder:Array<{channel:String, handler:Dynamic}>;
+		if (live_handlers.exists(key)) {
+			handler_holder = live_handlers[key];
+		} else {
+			handler_holder = new Array();
+			live_handlers[key] = handler_holder;
+		}
+		handler_holder.push(registry);
 	}
 	public function emit( type:String, data:Dynamic ) {
 		if (this.handlers.exists(type)) {
@@ -248,6 +257,7 @@ import gryffin.storage.LocalStorage;
 			var gevent:Dynamic = new gryffin.events.GryffinEvent('click');
 			gevent.x = event.stageX;
 			gevent.y = event.stageY;
+			gevent.button = (event.type == MouseEvent.CLICK ? 1 : 2);
 			var clicked:Null<gryffin.Entity> = null;
 			me.emit('click', gevent);
 
@@ -266,12 +276,21 @@ import gryffin.storage.LocalStorage;
 			}
 		};
 		this.stage.addEventListener(flash.events.MouseEvent.CLICK, clickHandler);
+		this.stage.addEventListener(flash.events.MouseEvent.RIGHT_CLICK, clickHandler);
 		#if mobile
 		this.stage.addEventListener(openfl.events.TouchEvent.TOUCH_TAP, clickHandler);
 		#end
 
 		var resizeHandler:Dynamic = function(event:flash.events.Event):Void {
 			var gevent:Dynamic = new gryffin.events.GryffinEvent('resize');
+			gevent.from = {
+				'width' : me.boundX,
+				'height' : me.boundY
+			};
+			gevent.to = {
+				'width' : me.stage.stageWidth,
+				'height' : me.stage.stageHeight
+			};
 			me.setBounds(me.stage.stageWidth, me.stage.stageHeight);
 			me.emit('resize', gevent);
 		};
@@ -335,6 +354,22 @@ import gryffin.storage.LocalStorage;
 		}
 
 		this.stage.addEventListener(flash.events.Event.SCROLL, scrollHandler);
+
+		var closeHandler:Dynamic = function (event:flash.events.Event):Void {
+			var gevent:gryffin.events.GryffinEvent = new gryffin.events.GryffinEvent('program-exit');
+			gevent.defaultAction = function():Void {
+				#if !html5
+				for (child in childNodes) {
+					if (!child.remove)
+						child.destroy(me);
+				}
+				#end
+			};
+			me.emit('exit', gevent);
+			gevent.performAction();
+		};
+
+		this.stage.addEventListener(flash.events.Event.DEACTIVATE, closeHandler);
 	}
 	public function startFPSCounter():Void {
 		var me = this;
@@ -365,6 +400,9 @@ import gryffin.storage.LocalStorage;
 		}
 		return null;
 	}
+	public static function getActiveStage():Null<Stage> {
+		return stages[0];
+	}
 
 //= Private Internal Methods
 	private static function ensureAssetsLoaded( inst:Stage ):Void {
@@ -381,8 +419,16 @@ import gryffin.storage.LocalStorage;
 		}
 	}
 
+	public static function initialize():Void {
+		try {
+			FileSystem.initialize();
+		} catch (error : String) {
+			trace(error);
+		}
+	}
+
 //= Private Internal Properties
-	private static var stages:Array<Stage> = [];
+	public static var stages:Array<Stage> = [];
 	private static var _assetsLoaded:Bool;
 	private static var _waitingForAssets:Array<Stage>;
 

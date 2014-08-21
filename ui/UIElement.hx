@@ -5,6 +5,10 @@ import gryffin.Stage;
 import gryffin.Surface;
 
 class UIElement extends Entity {
+	public var maxWidth:Int;
+	public var minWidth:Int;
+	public var maxHeight:Int;
+	public var minHeight:Int;
 	public var color:Dynamic;
 	public var margin:Float;
 	public var padding:Float;
@@ -27,5 +31,11 @@ class UIElement extends Entity {
 		this.borderRadius = 1;
 		this.borderColor = '#000000';
 		this.backgroundColor = '#000000';
+
+		this.maxHeight = 0;
+		this.minHeight = 0;
+
+		this.maxWidth = 0;
+		this.minWidth = 0;
 	}
 }
