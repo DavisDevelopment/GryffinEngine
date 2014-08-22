@@ -2,6 +2,21 @@
 #### Goals ####
 
 
- * Properly comment my code
- * Begin writing the API docs for the wiki
+##### General Changes #####
+ * Delete legacy packages that are no longer in use
+   * physics *
+   * shaders *
 
+ * Delete classes that have been abandoned
+   * display.Worker *
+   * display.Image *
+   * display.ImageFrame *
+   * display.SpriteSheetAnimation *
+
+---------------------------------------------------------------------------------------------------------------------
+
+ * Make the NativeMap class abstract
+
+
+##### Platform-Specific Changes #####
+ * Make the FileSystem use the *actual* filesystem API, on the JS target
