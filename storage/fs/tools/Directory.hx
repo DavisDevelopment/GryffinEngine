@@ -16,6 +16,11 @@ abstract Directory(IDirectory) {
 	public inline function toEntry():FSEntry {
 		return this;
 	}
+
+	@:from
+	public static inline function fromEntry(fse:FSEntry):Directory {
+		return new Directory(fse.name);
+	}
 }
 
 class IDirectory implements FSEntry {
@@ -56,5 +61,19 @@ class IDirectory implements FSEntry {
 	}
 	public function folder(id : String):IDirectory {
 		return cast FileSystem.folder(this.name.normalize().joinWith([id.normalize()]));
+	}
+	public function delete():Void {
+		FileSystem.deleteDirectory(this.name);
+	}
+	public function deleteDirectory(id : String):Void {
+		FileSystem.deleteDirectory(id);
+	}
+	public function deleteFile(id : String):Void {
+		FileSystem.deleteFile(id);
+	}
+	public function rename(newname : String):Directory {
+		FileSystem.rename(this.name, newname);
+		this.name = newname;
+		return this;
 	}
 }

@@ -28,6 +28,22 @@ class File implements FSEntry {
 		var extension:String = this.name.normalize().extname();
 		this.mime_type = MimeTypes.getMimeType(extension);
 	}
+	public inline function rename(newname:String):File {
+		var bits:Bytes = this.bytes;
+		FileSystem.deleteFile(this.name);
+		FileSystem.saveBytes('___f___o___o___t___', bits);
+
+		return FileSystem.file(newname);
+	}
+	public inline function move(newlocation:String):File {
+		var path:String = (newlocation.simplify() + '/' + this.name.basename().simplify());
+		trace(path);
+		this.rename(path);
+		return new File(this.name);
+	}
+	public inline function delete():Void {
+		FileSystem.deleteFile(this.name);
+	}
 	private inline function get_bytes():Null<Bytes> {
 		return FileSystem.getBytes(name);
 	}
