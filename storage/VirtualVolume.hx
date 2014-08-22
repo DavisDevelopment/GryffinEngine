@@ -5,6 +5,8 @@ import haxe.Serializer;
 import haxe.Unserializer;
 import haxe.io.Bytes;
 
+import gryffin.utils.Buffer;
+
 
 using gryffin.utils.PathTools;
 class VirtualVolume {
@@ -130,19 +132,7 @@ class VirtualVolume {
 		}
 	}
 	private function cloneBytes(bits:Bytes):Bytes {
-		var copy:Bytes = Bytes.alloc(bits.length);
-		var i:Int = 0;
-		while (true) {
-			try {
-				var bit:Int = bits.get(i);
-				copy.set(i, bit);
-				i++;
-			} catch (error : String) {
-				trace(error);
-				break;
-			}
-		}
-		return copy;
+		return cast (new Buffer(bits).copy());
 	}
 	public function saveBytes(id:String, bits:Bytes):Void {
 		var entry:Null<Entry> = retrieve_entry_by_name(id);
@@ -165,9 +155,6 @@ class VirtualVolume {
 	}
 	public function deleteFile(name : String):Void {
 		entries.remove(retrieve_entry_by_name(name));
-	}
-	public function rename(from:String, to:String):Void {
-		
 	}
 	public function getMeta(id:String, key:String):Null<Dynamic> {
 		var entry:Null<Entry> = retrieve_entry_by_name(id);

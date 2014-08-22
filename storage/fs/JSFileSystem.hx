@@ -104,6 +104,32 @@ class JSFileSystem {
 		volume.saveBytes(name, content);
 		save();
 	}
+	public static function deleteDirectory(name : String):Void {
+		volume.deleteDirectory(name);
+		save();
+	}
+	public static function deleteFile(name : String):Void {
+		volume.deleteFile(name);
+		save();
+	}
+	public static function rename(from:String, to:String):Void {
+		if (isDirectory(from)) {
+			if (!exists(to))
+				createDirectory(to);
+			for (file_name in readDirectory(from)) {
+				var oldp:String = from.joinWith([file_name.basename()]).simplify();
+				var newp:String = (to.simplify().joinWith([file_name.basename()]).simplify());
+				trace([oldp, newp]);
+				rename(oldp, newp);
+			}
+			deleteDirectory(from);
+		} else {
+			saveBytes(to, getBytes(from));
+			deleteFile(from);
+		}
+
+		//save();
+	}
 
 	public static function file(name : String):File {
 		return new File(name);

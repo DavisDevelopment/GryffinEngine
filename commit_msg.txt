@@ -1,0 +1,3 @@
+- added 'deleteDirectory' function to FileSystem and VirtualVolume classes
+- added 'deleteFile' function to FileSystem and VirtualVolume classes
+- added 'rename' function to FileSystem and VirtualVolume classes

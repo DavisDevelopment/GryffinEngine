@@ -72,3 +72,10 @@ class File implements FSEntry {
 		return list;
 	}
 }
+
+@:mimes("image/jpeg", "image/png")
+class ImageFile extends File {
+	public function new(name:String):Void {
+		super(name);
+	}
+}

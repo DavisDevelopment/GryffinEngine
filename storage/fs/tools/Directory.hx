@@ -6,15 +6,10 @@ import gryffin.storage.fs.FileSystem;
 
 using gryffin.utils.PathTools;
 
-@:forward(name, parent, parents)
+@:forward(name, parent, parents, file, folder)
 abstract Directory(IDirectory) {
 	public inline function new(name : String):Void {
 		this = new IDirectory(name);
-	}
-
-	@:arrayAccess
-	public inline function get(id : String):Null<FSEntry> {
-		return this.get(id);
 	}
 
 	@:to 
@@ -56,20 +51,10 @@ class IDirectory implements FSEntry {
 		}
 		return list;
 	}
-	public function get(id : String):Null<FSEntry> {
-		var actual_path:String = this.name.joinWith([id]).normalize();
-		if (FileSystem.exists(actual_path)) {
-			if (FileSystem.isDirectory(actual_path)) {
-				return new IDirectory(actual_path);
-			}
-			else if (FileSystem.isFile(actual_path)) {
-				return new File(actual_path);
-			}
-			else {
-				return null;
-			}
-		} else {
-			return null;
-		}
+	public function file(id : String):File {
+		return FileSystem.file(this.name.normalize().joinWith([id.normalize()]));
+	}
+	public function folder(id : String):IDirectory {
+		return cast FileSystem.folder(this.name.normalize().joinWith([id.normalize()]));
 	}
 }

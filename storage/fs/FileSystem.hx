@@ -3,6 +3,8 @@ package gryffin.storage.fs;
 import haxe.io.Bytes;
 import gryffin.storage.fs.tools.File;
 import gryffin.storage.fs.tools.Directory;
+import gryffin.utils.CompileTime;
+import gryffin.utils.CompileTimeClassList;
 
 using gryffin.utils.PathTools;
 @:expose
@@ -28,6 +30,12 @@ class FileSystem {
 	public static var saveContent:String -> String -> Void = MyFS.saveContent;
 
 	public static var saveBytes:String -> Bytes -> Void = MyFS.saveBytes;
+
+	public static var deleteDirectory:String -> Void = MyFS.deleteDirectory;
+
+	public static var deleteFile:String -> Void = MyFS.deleteFile;
+
+	public static var rename:String -> String -> Void = MyFS.rename;
 
 	public static function tree(path : String):Array<String> {
 		function branch(_path:String):Array<String> {
@@ -61,7 +69,6 @@ class FileSystem {
 	}
 
 	public static var folder:String -> Directory = MyFS.folder;
-
 	public static var file:String -> File = MyFS.file;
 }
 

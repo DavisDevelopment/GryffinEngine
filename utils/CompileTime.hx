@@ -15,6 +15,7 @@ import haxe.macro.Expr;
 import haxe.macro.Type;
 import haxe.macro.Format;
 import haxe.Json;
+import gryffin.utils.CompileTimeClassList;
 using StringTools;
 using Lambda;
 
@@ -242,7 +243,7 @@ class CompileTime
 
             // Get the CompileTimeClassList class
             var ct:ClassType = null;
-            switch (Context.getType("CompileTimeClassList")) {
+            switch (Context.getType("gryffin.utils.CompileTimeClassList")) {
                 case TInst(classType, _):
                     ct = classType.get();
                 default:
