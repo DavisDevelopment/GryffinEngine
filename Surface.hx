@@ -8,8 +8,6 @@ import flash.display.GraphicsPathWinding;
 import flash.geom.Rectangle;
 import flash.geom.Point;
 
-import gryffin.display.Image;
-import gryffin.display.SpriteSheetAnimation;
 import gryffin.display.ImageManipulation;
 import gryffin.display.SurfaceCommand;
 import gryffin.display.Canvas;
@@ -136,17 +134,7 @@ class Surface {
 	}
 	public function drawImage( image:Dynamic, x:Int, y:Int, w:Int, h:Int ):Void {
 		var me = this;
-		if(Types.typename(image) == "Image") {
-			var pic:Image = cast(image, Image);
-			pic.drawTo(this, x, y, w, h);
-			pic.nextFrame();
-		}
-		else if (Types.typename(image) == "SpriteSheetAnimation") {
-			var pic:SpriteSheetAnimation = cast(image, SpriteSheetAnimation);
-			pic.drawTo( this, x, y, w, h );
-			pic.nextFrame();
-		}
-		else if (Types.typename(image) == "Function") {
+		if (Types.typename(image) == "Function") {
 			image(this);
 		} else {
 			var pic:BitmapData = (function() {
