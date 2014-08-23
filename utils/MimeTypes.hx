@@ -18,7 +18,6 @@ class MimeTypes {
 		return null;
 	}
 
-
 	private static var primitive_known_types:Dynamic = CompileTime.parseJsonFile('gryffin/utils/mimes.json');
 	private static var known_types:Map<String, Array<String>>;
 

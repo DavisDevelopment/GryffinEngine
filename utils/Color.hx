@@ -18,6 +18,10 @@ abstract Color(IColor) {
 		return cast newColor;
 	}
 
+	@:to 
+	public inline function toInt32():Int {
+		return this.getColor();
+	}
 	@:to
 	public inline function toIColor():IColor {
 		return this;

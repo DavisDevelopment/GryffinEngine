@@ -26,4 +26,10 @@ class PixelMask {
 		var byte:Int = color.value;
 		buffer[index] = byte;
 	}
+
+
+	public static function fromBitmapData(bm:flash.display.BitmapData):PixelMask {
+		var area = bm.rect;
+		return new PixelMask(Buffer.fromByteArray(bm.getPixels(area)), Rectangle.fromFlashRectangle(area));
+	}
 }

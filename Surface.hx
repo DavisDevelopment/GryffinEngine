@@ -132,35 +132,17 @@ class Surface {
 			}
 		}
 	}
-	public function drawImage( image:Dynamic, x:Int, y:Int, w:Int, h:Int ):Void {
+	public function drawImage(image:BitmapData, x:Int, y:Int, w:Int, h:Int ):Void {
 		var me = this;
-		if (Types.typename(image) == "Function") {
-			image(this);
-		} else {
-			var pic:BitmapData = (function() {
-				var type:String = Types.typename(image);
-				switch ( type ) {
-					case "String":
-						if (this.stage.textures.exists(cast image))
-						return this.stage.textures.get(cast image);
-						else throw 'ReferenceError: Could not find specified image $image';
-					
-					case "BitmapData":
-						return cast( image, BitmapData );
-					
-					default:
-						throw 'TypeError: Cannot render $type objects with "drawImage"';
-				}
-			}());
-			var transform = new flash.geom.Matrix();
-			transform.translate(Math.abs(0.0-x), Math.abs(0.0-y));
-			var sx:Float = pic.width / w;
-			var sy:Float = pic.height / h;
-			transform.scale( sx, sy );
-			this.graphics.beginBitmapFill( pic, transform, false );
-			this.graphics.drawRect( x, y, w, h );
-			this.graphics.endFill();
-		}
+		var pic:BitmapData = image;
+		var transform = new flash.geom.Matrix();
+		transform.translate(Math.abs(0.0-x), Math.abs(0.0-y));
+		var sx:Float = pic.width / w;
+		var sy:Float = pic.height / h;
+		transform.scale( sx, sy );
+		this.graphics.beginBitmapFill( pic, transform, false );
+		this.graphics.drawRect( x, y, w, h );
+		this.graphics.endFill();
 	}
 	public function drawImageFragment( img:BitmapData, sx:Int, sy:Int, sw:Int, sh:Int, dx:Int, dy:Int, dw:Int, dh:Int ):Void {
 		var renderer:BitmapData = new BitmapData( sw, sh );

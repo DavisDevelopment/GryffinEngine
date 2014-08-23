@@ -39,4 +39,12 @@ class Rectangle {
 		}
 		return pointlist;
 	}
+
+	public function toFlashRectangle():flash.geom.Rectangle {
+		return new flash.geom.Rectangle(x, y, width, height);
+	}
+
+	public static function fromFlashRectangle(frect:flash.geom.Rectangle):Rectangle {
+		return new Rectangle([frect.left, frect.top], [frect.width, frect.height]);
+	}
 }

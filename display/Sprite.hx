@@ -133,4 +133,11 @@ class Sprite extends Entity {
 	override public function render(g:Surface, stage:Stage):Void {
 		this.drawFragment(g, 0, 0, this.imageWidth, this.imageHeight, this.x, this.y, this.width, this.height);
 	}
+
+
+	public static function scaleBitmap(bm:BitmapData, sx:Float, sy:Float, sw:Float, sh:Float, dx:Float, dy:Float, dw:Float, dh:Float):BitmapData {
+		var dummy:Sprite = new Sprite('');
+		dummy.data = bm;
+		return dummy.getScaledBitmap(sx, sy, sw, sh, dx, dy, dw, dh);
+	}
 }
