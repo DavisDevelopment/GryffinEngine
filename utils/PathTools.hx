@@ -27,6 +27,9 @@ class PathTools {
 		}
 		return path;
 	}
+	public static function root(path:String):String {
+		return (split(path)[0]);
+	}
 	public static function split(path:String):Array<String> {
 		var reg:String = normalize(path);
 		return reg.split(PATH_DELIMITER);
@@ -40,6 +43,18 @@ class PathTools {
 			bits.pop();
 		}
 		return join_split(bits);
+	}
+	public static function ancestry(path : String):Array<String> {
+		var pieces:Array<String> = split(path);
+		pieces.pop();
+		var results:Array<String> = new Array();
+
+		while (pieces.length > 0) {
+			results.push(join_split(pieces));
+			pieces.pop();
+		}
+
+		return results;
 	}
 	public static function resolve(from:String, to:String):String {
 		from = normalize(from);
