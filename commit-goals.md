@@ -1,42 +1,12 @@
-### GryffinEngine v.0.2.3 ###
-#### Goals ####
+### GryffinEngine v.0.2.4 ###
+ * Make the Virtual FileSystem regard Assets as static files that cannot be overwritten.
+   Asset files are now first-class citizens in the virtual filesystem.
 
+ * Make the NativeFileSystem class use the same "virtual" filesystem schema as the JavaScript implementation.
 
-##### General Changes #####
- * Delete legacy packages that are no longer in use
-   * physics^
-   * shaders^
+ * Create a new "entry-type" for the VirtualVolume class, for "linker" files, which just point to files that are neither Assets,
+   nor part of that Virtual FileSystem.
 
- * Delete classes that have been abandoned
-   * display.Worker^
-   * display.Image^
-   * display.ImageFrame^
-   * display.SpriteSheetAnimation^
+ * Create new `RegEx` class, which uses `EReg`, but behaves like a Python regular expression.
 
----------------------------------------------------------------------------------------------------------------------
-
- * Make Selection class abstract
-   * allow array access on selection
-   * allow implicit casting on selection
-     - implicit cast to what is now it's underlying type: `ISelection`^
-     - implicit cast to `Array<`*`Entity`*`>`^
-     - implicit cast to `String`^
-
-     - implicit cast *from* `ISelection`^
-     - implicit cast *from* `String`^
-     - implicit cast *from* `Array<`*`Entity`*`>`^
-   * allow addition of multiple selections^
-   * allow subtraction of multiple selections^
-   * allow addition of `String` + `Selection`^
-   * allow subtraction of `String` - `Selection`^
-
----------------------------------------------------------------------------------------------------------------------
-
- * Make new `PixelMask` class which reads pixel colors in *the* most efficient way possible
- * Make new `Texture` class which renders bitmap images lazily via the `Buffer` class
-
- * Make new `Modal` class in the `gryffin.ui` package, for creating semi-transparent overlays
-
-
-##### Platform-Specific Changes #####
  * Make the FileSystem use the **actual** filesystem API, on the JS target

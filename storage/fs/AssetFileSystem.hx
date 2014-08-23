@@ -2,6 +2,7 @@ package gryffin.storage.fs;
 
 import openfl.Assets;
 import haxe.io.Bytes;
+import gryffin.Utils;
 import gryffin.utils.Buffer;
 
 using gryffin.utils.PathTools;
@@ -10,7 +11,7 @@ class AssetFileSystem {
 	private static var _root:Array<String>;
 
 	public static function initialize():Void {
-		_all = Assets.list();
+		_all = getAll();
 		_root = new Array();
 		for (path in _all) {
 			path = path.simplify();
@@ -18,6 +19,15 @@ class AssetFileSystem {
 				_root.push(path.root());
 			}
 		}
+	}
+	public static function getAll():Array<String> {
+		var files:Array<String> = Assets.list();
+		var names:Array<String> = files.copy();
+
+		for (name in names) {
+			files = files.concat(name.ancestry());
+		}
+		return Utils.uniqueItems(files);
 	}
 	public static function exists(id : String):Bool {
 		return Assets.exists(id);

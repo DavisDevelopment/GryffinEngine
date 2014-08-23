@@ -11,17 +11,27 @@ import gryffin.storage.fs.AssetFileSystem;
 import openfl.Assets;
 
 using gryffin.utils.PathTools;
+
+@:allow(gryffin.storage.fs.FileSystem)
 class JSFileSystem {
 	private static inline var LOAD_ASSETS:Bool = true;
-
 	private static var volume:VirtualVolume;
+
+	public static var all:Array<String>;
+
 	public static function initialize():Void {
 		load();
 		AFS.initialize();
 
+		all = getAll();
+
 		Reflect.setProperty(js.Browser.window, 'fs', JSFileSystem);
 	}
-
+	private static function getAll():Array<String> {
+		var entries:Array<String> = [for (e in volume.entries) e.name];
+		entries = entries.concat(AFS.getAll());
+		return entries;
+	}
 	private static function load():Void {
 		var ls = js.Browser.getLocalStorage();
 		if (ls.getItem(LS_KEY) != null) {
