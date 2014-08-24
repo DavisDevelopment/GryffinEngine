@@ -172,6 +172,27 @@ class NativeFileSystem {
 
 		//save();
 	}
+	public static function mount(path : String):Void {
+		var data:Null<String> = getContent(path);
+		if (data != null) {
+			try {
+				var partition:VirtualVolume = VirtualVolume.unserialize(data);
+				for (entry in partition.entries) {
+					if (!exists(entry.name)) {
+						switch (entry.type) {
+							case 0:
+								saveBytes(entry.name, entry.data);
+
+							case 1:
+								createDirectory(entry.name);
+						}
+					}
+				}
+			} catch (err : String) {
+				trace(err);
+			}
+		}
+	}
 
 	public static function file(name : String):File {
 		return new File(name);

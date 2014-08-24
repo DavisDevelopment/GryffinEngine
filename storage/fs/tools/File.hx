@@ -44,6 +44,9 @@ class File implements FSEntry {
 	public inline function delete():Void {
 		FileSystem.deleteFile(this.name);
 	}
+	public inline function toDataURL():String {
+		return 'data:$mime_type;${Base64.encode(bytes)},<data>';
+	}
 	private inline function get_bytes():Null<Bytes> {
 		return FileSystem.getBytes(name);
 	}

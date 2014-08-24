@@ -37,6 +37,8 @@ class FileSystem {
 
 	public static var rename:String -> String -> Void = MyFS.rename;
 
+	public static var mount:String -> Void = MyFS.mount;
+
 	public static function tree(path : String):Array<String> {
 		return MyFS.getAll();
 	}
