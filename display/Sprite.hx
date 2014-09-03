@@ -97,7 +97,7 @@ class Sprite extends Entity {
 		var scaleY:Float = (height / frag.height);
 		var matrix:flash.geom.Matrix = new flash.geom.Matrix();
 		matrix.scale(scaleX, scaleY);
-		var scaled:BitmapData = new BitmapData(Std.int(frag.width * scaleX), Std.int(frag.height * scaleY));
+		var scaled:BitmapData = new BitmapData(Std.int(frag.width * scaleX), Std.int(frag.height * scaleY), true, 0x000000);
 		scaled.draw(frag, matrix, null, null, null, true);
 		return scaled;
 	}
@@ -114,7 +114,7 @@ class Sprite extends Entity {
 			wrapper.width = dw;
 			wrapper.height = dh;
 
-			var drawer:BitmapData = new BitmapData(i(dw), i(dh));
+			var drawer:BitmapData = new BitmapData(i(dw), i(dh), true, 0x000000);
 			drawer.draw(wrapper);
 			this.resizeCache.set(key, drawer);
 			return drawer;

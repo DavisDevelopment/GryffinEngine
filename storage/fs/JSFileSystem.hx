@@ -12,6 +12,7 @@ import openfl.Assets;
 
 using gryffin.utils.PathTools;
 
+@:keep
 @:allow(gryffin.storage.fs.FileSystem)
 class JSFileSystem {
 	private static inline var LOAD_ASSETS:Bool = true;

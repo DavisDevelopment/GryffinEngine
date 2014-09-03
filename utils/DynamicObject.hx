@@ -1,8 +1,11 @@
-package gryfin.utils;
+package gryffin.utils;
 
 abstract DynamicObject( Dynamic ) {
-	public inline new(x : Dynamic):Void {
+	public inline function new(x : Dynamic):Void {
 		this = x;
+	}
+	public inline function keys():Array<String> {
+		return Reflect.fields(this);
 	}
 	@:arrayAccess
 	public inline function get(key : String):Null<Dynamic> {

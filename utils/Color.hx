@@ -15,7 +15,10 @@ abstract Color(IColor) {
 	}
 	public inline function mix(other:Color, ?ratio:Null<Float>):Color {
 		var newColor:IColor = this.mix(other.toIColor(), ratio);
-		return cast newColor;
+		this.red = newColor.red;
+		this.green = newColor.green;
+		this.blue = newColor.blue;
+		return cast this;
 	}
 
 	@:to 

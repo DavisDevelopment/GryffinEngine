@@ -16,6 +16,9 @@ import haxe.macro.Type;
 import haxe.macro.Format;
 import haxe.Json;
 import gryffin.utils.CompileTimeClassList;
+import gryffin.gscript.Parser;
+import gryffin.gscript.Interp;
+import gryffin.gscript.Macro;
 using StringTools;
 using Lambda;
 
@@ -55,6 +58,32 @@ class CompileTime
             haxe.macro.Context.error('Json from $path failed to validate: $e', Context.currentPos());
         }
         return toExpr(content);
+    }
+
+    macro public static function inlineAST(path:String):ExprOf<{}> {
+        var content = loadFileAsString(path);
+        var parser = new Parser();
+        parser.allowTypes = parser.allowJSON = true;
+        var program = parser.parseString(content);
+        return macro ($v{program});
+    }
+    macro public static function interpretFile(path:String):ExprOf<{}> {
+        var content = (loadFileAsString(path));
+        var parser = new Parser();
+        parser.allowJSON = true;
+        parser.allowTypes = true;
+        var program = (parser.parseString(content));
+
+        return macro (new gryffin.gscript.Interp().execute($v{program}));
+    }
+
+    macro public static function inlineFile(path:String):Expr {
+        var content = loadFileAsString(path);
+        var parser = new Parser();
+        parser.allowTypes = parser.allowJSON = true;
+        var program = (parser.parseString(content));
+        var stuff = new gryffin.gscript.Macro(haxe.macro.Context.currentPos());
+        return stuff.convert(program);
     }
 
     /** Same as readFile, but checks that the file is valid Json */

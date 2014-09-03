@@ -1,7 +1,7 @@
 package gryffin.utils;
 
 import gryffin.EventDispatcher;
-import gryffin.intel.Packet;
+import gryffin.net.Packet;
 
 @:allow(Stream)
 class Stream <T> {

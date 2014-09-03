@@ -1,7 +1,10 @@
 package gryffin.utils;
 
 import haxe.io.Bytes;
+
+#if openfl
 import openfl.utils.ByteArray;
+#end
 
 import gryffin.Utils;
 
@@ -39,7 +42,7 @@ abstract Buffer(Bytes) {
 		};
 		return iter;
 	}
-
+	
 	private static inline function add(one:Buffer, other:Buffer):Buffer {
 		other = cast(other, Buffer);
 		one = cast(one, Buffer);
@@ -61,10 +64,12 @@ abstract Buffer(Bytes) {
 		return add(Buffer.fromBytes(this), Buffer.fromBytes(other));
 	}
 
+#if openfl
 	@:op(A + B)
 	public inline function addByteArray(other : ByteArray) {
 		return add(Buffer.fromBytes(this), Buffer.fromByteArray(other));
 	}
+#end
 
 	@:op(A + B)
 	public inline function addString(other : String):Buffer {
@@ -170,6 +175,7 @@ abstract Buffer(Bytes) {
 		return set;
 	}
 
+#if openfl
 	@:to
 	public inline function toByteArray():ByteArray {
 		var intArray:Array<Int> = (new Buffer(this).toArray());
@@ -183,16 +189,19 @@ abstract Buffer(Bytes) {
 
 		return ba;
 	}
+#end
 
 	@:from
 	public static inline function fromBytes(bits : Bytes):Buffer {
 		return new Buffer(bits);
 	}
 
+#if openfl
 	@:from
 	public static inline function fromByteArray(bits : ByteArray):Buffer {
 		return new Buffer(Utils.ByteArrayToBytes(bits));
 	}
+#end
 
 	@:from
 	public static inline function fromString(chars:String):Buffer {

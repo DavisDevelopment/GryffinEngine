@@ -1,7 +1,7 @@
-package gryffin.intel;
+package gryffin.net;
 
 import gryffin.utils.Stream;
-import gryffin.intel.Packet;
+import gryffin.net.Packet;
 
 class Pipeline<T> {
 	public var listening:Bool;

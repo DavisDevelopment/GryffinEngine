@@ -1,4 +1,4 @@
-package gryffin.intel;
+package gryffin.net;
 
 abstract Packet<T>(IPacket<T>) {
 	public inline function new(msg:T):Void {

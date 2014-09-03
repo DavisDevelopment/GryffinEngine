@@ -8,6 +8,7 @@ import gryffin.utils.CompileTimeClassList;
 
 using gryffin.utils.PathTools;
 @:expose
+@:keep
 class FileSystem {
 	public static var initialize:Void -> Void = MyFS.initialize;
 

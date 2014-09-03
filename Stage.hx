@@ -334,6 +334,9 @@ import gryffin.storage.fs.FileSystem;
 			var gevent:gryffin.events.GryffinEvent = new gryffin.events.GryffinEvent(type);
 			gevent.keyCode = event.keyCode;
 			gevent.charCode = event.charCode;
+			#if html5
+			gevent.charCode = gevent.keyCode;
+			#end
 			gevent.ctrlKey = event.ctrlKey;
 			gevent.shiftKey = event.shiftKey;
 			gevent.altKey = event.altKey;

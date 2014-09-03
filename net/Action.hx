@@ -1,4 +1,4 @@
-package gryffin.intel;
+package gryffin.net;
 
 class Action {
 	public var target:Entity;

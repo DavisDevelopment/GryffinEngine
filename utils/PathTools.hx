@@ -11,6 +11,11 @@ class PathTools {
 			return '';
 		}
 	}
+	public static function port(path:String):String {
+		path = simplify(path);
+
+		return path.substring(path.lastIndexOf(':'));
+	}
 	public static function normalize(path:String):String {
 		var copy:String = (path + '');
 		copy = StringTools.replace(copy, '\\', PATH_DELIMITER);
