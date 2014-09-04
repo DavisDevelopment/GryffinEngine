@@ -1,22 +1,38 @@
 package gryffin.storage.fs;
 
+import gryffin.Utils;
 import gryffin.storage.VirtualVolume;
 import haxe.io.Bytes;
 
 import gryffin.storage.fs.tools.File;
 import gryffin.storage.fs.tools.Directory;
+import gryffin.storage.fs.AssetFileSystem;
 
 import openfl.Assets;
 
 using gryffin.utils.PathTools;
+
+@:keep
+@:allow(gryffin.storage.fs.FileSystem)
 class JSFileSystem {
 	private static inline var LOAD_ASSETS:Bool = true;
-
 	private static var volume:VirtualVolume;
+
+	public static var all:Array<String>;
+
 	public static function initialize():Void {
 		load();
-	}
+		AFS.initialize();
 
+		all = getAll();
+
+		Reflect.setProperty(js.Browser.window, 'fs', JSFileSystem);
+	}
+	private static function getAll():Array<String> {
+		var entries:Array<String> = [for (e in volume.entries) e.name];
+		entries = entries.concat(AFS.getAll());
+		return entries;
+	}
 	private static function load():Void {
 		var ls = js.Browser.getLocalStorage();
 		if (ls.getItem(LS_KEY) != null) {
@@ -27,20 +43,6 @@ class JSFileSystem {
 			ls.setItem(LS_KEY, volume.serialize());
 		}
 	}
-	private static function getBytesFromAsset(path : String):Bytes {
-		var bits:Null<flash.utils.ByteArray> = Assets.getBytes(path);
-		if (bits == null)
-			return Bytes.alloc(0);
-		var bytes:Bytes = Bytes.alloc(bits.length);
-		bits.position = 0;
-
-		while (bits.bytesAvailable > 0) {
-			var pos:Int = bits.position;
-			bytes.set(pos, bits.readByte());
-		}
-
-		return bytes;
-	}
 	private static function save():Void {
 		if (volume != null) {
 			js.Browser.getLocalStorage().setItem(LS_KEY, volume.serialize());
@@ -48,16 +50,25 @@ class JSFileSystem {
 	}
 
 	public static function exists(name : String):Bool {
-		return volume.exists(name) || Assets.exists(name);
+		return volume.exists(name);
+	}
+	/**
+	 * Determines whether given path exists **only** in our virtual filesystem registry,
+	 * as oppposed to checking if it exists in either our registry **or** the asset registry
+	 * ---
+	 * @return Bool
+	 */
+	public static function isLocal(name:String):Bool {
+		return ((isFile(name) && !AFS.isFile(name)) || (isDirectory(name) && !AFS.isDirectory(name)));
 	}
 	public static function isDirectory(name:String):Bool {
-		return volume.isDirectory(name);
+		return (volume.isDirectory(name) || AFS.isDirectory(name));
 	}
 	public static function isFile(name:String):Bool {
-		return volume.isFile(name) || Assets.exists(name);
+		return (volume.isFile(name) || AFS.isFile(name));
 	}
 	public static function isEmpty(name:String):Bool {
-		return volume.isEmpty(name);
+		return (volume.isEmpty(name) || AFS.isEmpty(name));
 	}
 
 	public static function createDirectory(name : String):Void {
@@ -66,41 +77,75 @@ class JSFileSystem {
 	}
 	private static function readRoot():Array<String> {
 		var all_entries = volume.entries;
-		var root_entries:Array<String> = new Array();
-
-		for (entry in all_entries) {
-			if (entry.name.normalize().dirname() == '') root_entries.push(entry.name.normalize().basename().normalize());
-		}
+		var root_entries:Array<String> = all_entries.map(function(x) {
+			return (x.name.root());
+		});
+		root_entries.pop();
+		root_entries = Utils.uniqueItems(root_entries);
 
 		return root_entries;
 	}
 	public static function readDirectory(name : String):Array<String> {
+		name = name.simplify();
+		var all:Array<String> = [for (entry in volume.entries) entry.name];
 		if (name == '') {
-			return readRoot();
-		}
-		if (volume.exists(name)) {
-			return volume.readDirectory(name);
+			return readRoot().concat(AFS.readDirectory(''));
 		} else {
-			return Assets.list().filter(function(x:String) {
-				return (x.parent() == name);
+			var ret:Array<String> = all.filter(function(x:String):Bool {
+				return (x.parent().simplify() == name);
 			});
+			ret = ret.concat(AFS.readDirectory(name));
+			return ret;
 		}
 	}
 
 	public static function getContent(name : String):String {
-		return (volume.exists(name) ? volume.getContent(name) : Assets.getText(name));
+		if (isFile(name)) {
+			return (isLocal(name) ? volume.getContent(name) : AFS.getContent(name));
+		} else {
+			return '';
+		}
 	}
+
 	public static function getBytes(name : String):Bytes {
-		return (volume.exists(name) ? volume.getBytes(name) : getBytesFromAsset(name));
+		if (isFile(name)) {
+			return (isLocal(name) ? volume.getBytes(name) : AFS.getBytes(name));
+		} else {
+			return Bytes.alloc(0);
+		}
 	}
 
 	public static function saveContent(name:String, content:String):Void {
-		if (!exists(name)) volume.createFile(name);
+		var dir:String = name.simplify().dirname();
+		if (!exists(name)) {
+			if (dir != '') {
+				if (isDirectory(dir)) {
+					if (!isLocal(dir)) {
+						volume.createDirectory(dir);
+					}
+				} else {
+					volume.createDirectory(dir);
+				}
+			}
+			volume.createFile(name);
+		}
 		volume.saveContent(name, content);
 		save();
 	}
 	public static function saveBytes(name:String, content:Bytes):Void {
-		if (!exists(name)) volume.createFile(name);
+		var dir:String = name.simplify().dirname();
+		if (!exists(name)) {
+			if (dir != '') {
+				if (isDirectory(dir)) {
+					if (!isLocal(dir)) {
+						volume.createDirectory(dir);
+					}
+				} else {
+					volume.createDirectory(dir);
+				}
+			}
+			volume.createFile(name);
+		}
 		volume.saveBytes(name, content);
 		save();
 	}
@@ -130,6 +175,27 @@ class JSFileSystem {
 
 		//save();
 	}
+	public static function mount(path : String):Void {
+		var data:Null<String> = getContent(path);
+		if (data != null) {
+			try {
+				var partition:VirtualVolume = VirtualVolume.unserialize(data);
+				for (entry in partition.entries) {
+					if (!exists(entry.name)) {
+						switch (entry.type) {
+							case 0:
+								saveBytes(entry.name, entry.data);
+
+							case 1:
+								createDirectory(entry.name);
+						}
+					}
+				}
+			} catch (err : String) {
+				trace(err);
+			}
+		}
+	}
 
 	public static function file(name : String):File {
 		return new File(name);
@@ -141,3 +207,5 @@ class JSFileSystem {
 
 	private static inline var LS_KEY:String = '__gryffin_fs__';
 }
+
+private typedef AFS = AssetFileSystem;

@@ -24,10 +24,32 @@ class EventDispatcher {
 		var channel : String = cast handler.channel;
 
 		if (Reflect.isFunction(func)) {
-			func( data );
-			if (handler.once) {
-				var handlerList : Array < Handler > = this.handlers.get( channel );
-				handlerList.remove( handler );
+			/*
+				Two-tier try/catch statement to prevent errors from being thrown in the end-application.
+				First, it attempts to invoke the "handler" function with one argument:data; if that fails,
+				it then tries invoking it with no arguments.
+			 */
+			try {
+				func( data );
+				if (handler.once) {
+					var handlerList : Array < Handler > = this.handlers.get( channel );
+					handlerList.remove( handler );
+				}
+			} catch (err : String) {
+				#if debug
+					trace(err);
+				#end
+				try {
+					func();
+					if (handler.once) {
+						var handlerList : Array<Handler> = this.handlers.get(channel);
+						handlerList.remove(handler);
+					}
+				} catch (error : String) {
+					#if debug
+						throw error;
+					#end
+				}
 			}
 		}
 	}

@@ -33,7 +33,7 @@ enum Const {
 	#end
 }
 
-#if gryffin.gscriptPos
+#if (gscriptPos)
 typedef Expr = {
 	var e : ExprDef;
 	var pmin : Int;

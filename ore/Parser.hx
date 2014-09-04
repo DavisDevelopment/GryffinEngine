@@ -28,6 +28,9 @@ class Parser {
 				switch ( next ) {
 					case TIdent( id ):
 						return IdTest(id);
+						
+					case Token.TString(str):
+						return IdTest(str);
 					default:
 						unexpected(tk);
 						return Any;

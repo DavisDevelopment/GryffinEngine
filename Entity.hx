@@ -63,7 +63,7 @@ class Entity extends EventDispatcher implements EventSensitive {
 		return selector(this);
 	}
 	public function describe():String {
-		return '.${Types.basictype(this)}#$id';
+		return '."${Types.basictype(this)}"#"$id"';
 	}
 	private function should_autoemit(channel:String):Bool {
 		var autoers:Array<String> = [for (channl in to_autoemit.keys()) channl];

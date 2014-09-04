@@ -1,8 +1,141 @@
 package gryffin;
 
+import gryffin.Entity;
+
 typedef Handler = Dynamic -> Dynamic;
 
-class Selection {
+@:forward(
+	live_handlers,
+	from_array,
+	_stage,
+	items,
+	selector,
+	selectorFunction,
+	get_stage,getMatches,
+	update,
+	at,
+	indexOf,
+	iterator,
+	toArray,
+	each,
+	is,
+	filter,
+	on,
+	emit,
+	bind,
+	unbind,
+	live,
+	call,
+	attr,
+	destroy,
+	contains,
+	cache,
+	uncache,
+	hide,
+	show,
+	length,
+	getSelectorFunction
+)
+abstract Selection(ISelection) {
+	private var self(get, never):Selection;
+	public inline function new(sel:String, ?stage:Null<Stage>):Void {
+		this = new ISelection(sel, stage);
+	}
+	private inline function get_self():Selection {
+		return cast this;
+	}
+	public inline function iterator():Iterator<Entity> {
+		return this.iterator();
+	}
+	@:arrayAccess
+	public inline function grab(index : Int):Null<Entity> {
+		return this.at(index);
+	}
+/*
+ == Operator Methods ==
+*/	
+	@:op(A + B)
+	public inline function plusSelection(other : Selection):Selection {
+		//var self:Selection = cast this;
+		var selector:String = '(${self.selector})|(${other.selector})';
+		return new Selection(selector);
+	}
+	@:op(A + B)
+	public inline function plusString(other : String):Selection {
+		return new Selection('(${this.selector})|(other)');
+	}
+	@:op(A + B)
+	public inline function plusEntity(other : Entity):Selection {
+		//var self:Selection = cast this;
+		return (self + other.describe());
+	}
+	@:op(A + B)
+	public inline function plusEntityArray(others:Array<Entity>):Selection {
+		//var self:Selection = cast this;
+		return (self + ([for (ent in others) ('('+ent.describe()+')')].join('|')));
+	}
+
+	@:op(A - B)
+	public inline function minusString(filter : String):Selection {
+		return new Selection(self.selector + ('&!($filter)'));
+	}
+
+	@:op(A - B)
+	public inline function minusSelection(other : Selection):Selection {
+		return (self - other.selector);
+	}
+
+	@:op(A - B)
+	public inline function minusEntity(other : Entity):Selection {
+		return (self - other.describe());
+	}
+
+	@:op(A - B)
+	public inline function minusEntityArray(others : Array<Entity>):Selection {
+		return (self - arraySelectorString(others));
+	}
+
+/*
+ == Implicit Casting Methods ==
+*/
+	@:to 
+	public inline function toISelection():ISelection {
+		return this;
+	}
+	@:to 
+	public inline function toArray():Array<Entity> {
+		return this.toArray();
+	}
+	@:to 
+	public inline function toString():String {
+		return ([for (ent in this.toArray()) ('('+ent.describe()+')')].join('|'));
+	}
+
+	@:from 
+	public static inline function fromISelection(prim : ISelection):Selection {
+		return cast prim;
+	}
+	@:from 
+	public static inline function fromString(sel:String):Selection {
+		return new Selection(sel + '');
+	}
+	@:from 
+	public static inline function fromEntity(ent:Entity):Selection {
+		return new Selection(ent.describe());
+	}
+	@:from
+	public static inline function fromArray(ent_set:Array<Entity>):Selection {
+		var selectors:Array<String> = [for (ent in ent_set) ('('+ent.describe()+')')];
+		var selector:String = (ent_set.length > 0 ? selectors.join('|') : '!*');
+		return new Selection(selector);
+	}
+
+	private static inline function arraySelectorString(others:Array<Entity>):String {
+		return ([for (ent in others) ('('+ent.describe()+')')].join('|'));
+	}
+}
+
+class ISelection {
 	private var live_handlers:Map<String, Array<Dynamic>>;
 	public var from_array:Bool;
 	private var _stage:Stage;
@@ -14,9 +147,13 @@ class Selection {
 
 	public var stage(get, never):Stage;
 	public function new(sel:String, ?stage:Null<Stage>):Void {
+		if (stage == null)
+			stage = Stage.stages[0];
+
 		this.live_handlers = new Map();
 		this.selector = sel;
 		this.selectorFunction = this.getSelectorFunction(sel);
+
 		this.items = this.getMatches(stage.childNodes);
 
 		this.from_array = false;

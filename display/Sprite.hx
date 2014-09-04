@@ -97,7 +97,7 @@ class Sprite extends Entity {
 		var scaleY:Float = (height / frag.height);
 		var matrix:flash.geom.Matrix = new flash.geom.Matrix();
 		matrix.scale(scaleX, scaleY);
-		var scaled:BitmapData = new BitmapData(Std.int(frag.width * scaleX), Std.int(frag.height * scaleY));
+		var scaled:BitmapData = new BitmapData(Std.int(frag.width * scaleX), Std.int(frag.height * scaleY), true, 0x000000);
 		scaled.draw(frag, matrix, null, null, null, true);
 		return scaled;
 	}
@@ -114,7 +114,7 @@ class Sprite extends Entity {
 			wrapper.width = dw;
 			wrapper.height = dh;
 
-			var drawer:BitmapData = new BitmapData(i(dw), i(dh));
+			var drawer:BitmapData = new BitmapData(i(dw), i(dh), true, 0x000000);
 			drawer.draw(wrapper);
 			this.resizeCache.set(key, drawer);
 			return drawer;
@@ -132,5 +132,12 @@ class Sprite extends Entity {
 
 	override public function render(g:Surface, stage:Stage):Void {
 		this.drawFragment(g, 0, 0, this.imageWidth, this.imageHeight, this.x, this.y, this.width, this.height);
+	}
+
+
+	public static function scaleBitmap(bm:BitmapData, sx:Float, sy:Float, sw:Float, sh:Float, dx:Float, dy:Float, dw:Float, dh:Float):BitmapData {
+		var dummy:Sprite = new Sprite('');
+		dummy.data = bm;
+		return dummy.getScaledBitmap(sx, sy, sw, sh, dx, dy, dw, dh);
 	}
 }
