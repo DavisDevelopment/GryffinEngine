@@ -8,6 +8,7 @@ package gryffin.utils;
 
 import gryffin.io.StdOut;
 import gryffin.io.Stream;
+import gryffin.io.DataSource;
 import gryffin.storage.fs.FileSystem;
 
 class Console {
@@ -22,5 +23,22 @@ class Console {
 	}
 	private static function writeLogToFile(dat : Dynamic):Void {
 		return;
+	}
+
+	public static function prompt(msg:String):String {
+		var src = new DataSource<String>(function():String {
+			#if desktop
+				return Sys.stdin().readLine();
+			#elseif html5
+				return untyped window.prompt(msg, '');
+			#end
+			return '';
+		});
+		#if desktop
+		out.open();
+		out << msg;
+		out.close();
+		#end
+		return src.get();
 	}
 }

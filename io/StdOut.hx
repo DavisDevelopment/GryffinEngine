@@ -9,7 +9,11 @@ class StdOut {
 	private inline static function __init__():Void {
 		stream = new Stream();
 		stream.onInputReceived = function(x):Void {
-			Console.log(x);
+			#if desktop
+				Sys.print(x);
+			#else
+				trace(x);
+			#end
 		};
 	}
 }
